@@ -12,8 +12,8 @@ import org.apache.commons.io.FileUtils;
 import javax.swing.tree.DefaultMutableTreeNode;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -57,10 +57,9 @@ public class FileSystemManager {
                 file.getParentFile().mkdirs();
                 file.createNewFile();
             }
-            FileWriter fw = new FileWriter(file);
-            fw.write(htmlText);
-            fw.flush();
-            fw.close();
+            try (var writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
+                writer.write(htmlText);
+            }
 
         } catch (IOException e) {
             e.printStackTrace();

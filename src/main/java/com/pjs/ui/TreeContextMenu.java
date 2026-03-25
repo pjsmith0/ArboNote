@@ -57,8 +57,6 @@ public class TreeContextMenu extends JPopupMenu {
                         .fileName(location)
                         .build();
 
-                //DefaultMutableTreeNode newNode = new DefaultMutableTreeNode(treeItemData);
-                //selectedNode.add(newNode);
                 DefaultMutableTreeNode newNode = new DefaultMutableTreeNode(treeItemData);
                 DefaultTreeModel model = (DefaultTreeModel) tree.getModel();
                 model.insertNodeInto(newNode, selectedNode, selectedNode.getChildCount());

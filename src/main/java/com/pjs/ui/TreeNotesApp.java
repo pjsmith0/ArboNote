@@ -9,6 +9,8 @@ import com.pjs.util.FileSystemManager;
 import lombok.SneakyThrows;
 
 import javax.swing.*;
+import javax.swing.event.TreeModelEvent;
+import javax.swing.event.TreeModelListener;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.tree.*;
 import java.awt.*;
@@ -53,6 +55,9 @@ public class TreeNotesApp extends JFrame {
         tree.addTreeSelectionListener(this::onTreeSelection);
         tree.addMouseListener(buildMouseAdaptor());
         tree.setCellRenderer(getCellRenderer());
+        tree.setDragEnabled(true);
+        tree.setDropMode(DropMode.ON_OR_INSERT);
+        tree.setTransferHandler(new TreeTransferHandler(fileSystemManager));
 
         JScrollPane treeScrollPane = new JScrollPane(tree);
         treeScrollPane.setBorder(BorderFactory.createTitledBorder("Notes Tree"));

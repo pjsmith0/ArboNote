@@ -65,6 +65,12 @@ public class ToolBarCommands {
                 new RedoCommand(undoManager)
         ));
 
+        // add separator
+
+        commandGroups.add(new CommandGroup(
+                new ListCommand()
+        ));
+
         return commandGroups;
     }
 

@@ -19,14 +19,15 @@ public class CustomHTMLEditorKit extends HTMLEditorKit {
             .allowUrlProtocols("http", "https", "data", "mailto") //
             .allowAttributes("id").globally() //
             .allowAttributes("class").globally() //
-            .allowAttributes("align").onElements("p")
+            .allowAttributes("align").onElements("p", "hr")
             .allowStyling(CssSchema.DEFAULT) //
             .allowAttributes("src").onElements("img") //
             .allowAttributes("alt").onElements("img") //
             .allowAttributes("height", "width").onElements("img") //
             .allowAttributes("href").onElements("a") //
             .allowAttributes("color").onElements("font") //
-            .allowElements("p", "div", "b", "i", "u", "strike", "font", "a", "img") //
+            .allowAttributes("size", "width").onElements("hr") //
+            .allowElements("html", "head", "body", "style", "p", "div", "span", "br", "b", "i", "u", "strike", "font", "a", "img", "ul", "ol", "li", "hr") //
             .toFactory();
 
     private static final long serialVersionUID = 42L;
