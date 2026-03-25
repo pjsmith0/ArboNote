@@ -16,8 +16,9 @@
     <java.version>25</java.version>
     <slf4j.version>1.7.36</slf4j.version>
     <flatlaf.version>3.6.2</flatlaf.version>
-    <commons-io.version>2.11.0</commons-io.version>
+<!--    <commons-io.version>2.11.0</commons-io.version>-->
     <commons-codec.version>1.9</commons-codec.version>
+    <jcefmaven.version>143.0.14</jcefmaven.version>
   </properties>
 
   <dependencyManagement>
@@ -45,6 +46,12 @@
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>2.15.2</version>
+    </dependency>
+
+    <dependency>
+      <groupId>me.friwi</groupId>
+      <artifactId>jcefmaven</artifactId>
+      <version>${jcefmaven.version}</version>
     </dependency>
 
     <!-- Sanitize HTML -->
@@ -86,11 +93,11 @@
       <version>${slf4j.version}</version>
     </dependency>
     <!-- Apache Commons -->
-    <dependency>
-      <groupId>commons-io</groupId>
-      <artifactId>commons-io</artifactId>
-      <version>${commons-io.version}</version>
-    </dependency>
+<!--    <dependency>-->
+<!--      <groupId>commons-io</groupId>-->
+<!--      <artifactId>commons-io</artifactId>-->
+<!--      <version>${commons-io.version}</version>-->
+<!--    </dependency>-->
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>

@@ -4,18 +4,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pjs.Config;
 import com.pjs.model.TreeHierarchyData;
 import com.pjs.model.TreeItemData;
-import com.pjs.ui.htmleditor.SwingHTMLEditor;
 import com.pjs.util.FileSystemManager;
 import lombok.SneakyThrows;
 
 import javax.swing.*;
-import javax.swing.event.TreeModelEvent;
-import javax.swing.event.TreeModelListener;
 import javax.swing.event.TreeSelectionEvent;
-import javax.swing.tree.*;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeCellRenderer;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeCellRenderer;
+import javax.swing.tree.TreeModel;
+import javax.swing.tree.TreePath;
+import javax.swing.tree.TreeSelectionModel;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.nio.file.Path;
 import java.util.Optional;
 
@@ -25,7 +30,7 @@ public class TreeNotesApp extends JFrame {
     private static final String ROOT_IMAGE = "/icons/lock.png";
 
     private final JTree tree;
-    private final SwingHTMLEditor editor;
+    private final JcefHTMLEditor editor;
     private final JLabel statusBar;
     private Config config = new Config();
     private final FileSystemManager fileSystemManager;
@@ -33,7 +38,9 @@ public class TreeNotesApp extends JFrame {
     @SneakyThrows
     public TreeNotesApp() {
         super("Tree Notes");
+
         fileSystemManager = new FileSystemManager(config);
+
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1000, 700);
         setLocationRelativeTo(null);
@@ -42,11 +49,11 @@ public class TreeNotesApp extends JFrame {
         setJMenuBar(createMenuBar());
 
         ObjectMapper mapper = new ObjectMapper();
-        TreeHierarchyData rootPageNode = mapper.readValue(Path.of(
-                config.getRootPath(),
-                config.getTreeFileName()).toFile(), TreeHierarchyData.class);
+        TreeHierarchyData rootPageNode = mapper.readValue(
+                Path.of(config.getRootPath(), config.getTreeFileName()).toFile(),
+                TreeHierarchyData.class
+        );
 
-        // Build Swing TreeModel
         TreeModel treeModel = buildTreeModel(rootPageNode);
 
         tree = new JTree(treeModel);
@@ -62,15 +69,16 @@ public class TreeNotesApp extends JFrame {
         JScrollPane treeScrollPane = new JScrollPane(tree);
         treeScrollPane.setBorder(BorderFactory.createTitledBorder("Notes Tree"));
 
-        editor = new SwingHTMLEditor();
+        editor = new JcefHTMLEditor();
 
-        JScrollPane editorScrollPane = new JScrollPane(editor);
-        editorScrollPane.setBorder(BorderFactory.createTitledBorder("Editor"));
+        JPanel editorContainer = new JPanel(new BorderLayout());
+        editorContainer.setBorder(BorderFactory.createTitledBorder("Editor"));
+        editorContainer.add(editor, BorderLayout.CENTER);
 
         JSplitPane splitPane = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT,
                 treeScrollPane,
-                editorScrollPane
+                editorContainer
         );
         splitPane.setDividerLocation(250);
         splitPane.setOneTouchExpandable(true);
@@ -81,25 +89,37 @@ public class TreeNotesApp extends JFrame {
         statusBar = new JLabel(" Ready");
         statusBar.setBorder(BorderFactory.createEtchedBorder());
         add(statusBar, BorderLayout.SOUTH);
+
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                editor.dispose();
+            }
+        });
     }
 
     private TreeCellRenderer getCellRenderer() {
         return new DefaultTreeCellRenderer() {
             @Override
             public Component getTreeCellRendererComponent(
-                    JTree tree, Object value,
-                    boolean selected, boolean expanded,
-                    boolean leaf, int row, boolean hasFocus) {
+                    JTree tree,
+                    Object value,
+                    boolean selected,
+                    boolean expanded,
+                    boolean leaf,
+                    int row,
+                    boolean hasFocus) {
 
                 super.getTreeCellRendererComponent(
-                        tree, value, selected, expanded, leaf, row, hasFocus);
+                        tree, value, selected, expanded, leaf, row, hasFocus
+                );
 
                 DefaultMutableTreeNode node = (DefaultMutableTreeNode) value;
                 Object userObject = node.getUserObject();
 
-                if (userObject instanceof TreeItemData) {
-                    TreeItemData treeItemData = (TreeItemData) userObject;
+                if (userObject instanceof TreeItemData treeItemData) {
                     setText(treeItemData.getNodeName());
+
                     if (node.getParent() == null) {
                         Optional.ofNullable(getClass().getResource(ROOT_IMAGE))
                                 .ifPresent(url -> setIcon(new ImageIcon(url)));
@@ -108,18 +128,19 @@ public class TreeNotesApp extends JFrame {
                                 .ifPresent(url -> setIcon(new ImageIcon(url)));
                     }
                 }
+
                 return this;
             }
         };
     }
 
-    //@Override
     private MouseAdapter buildMouseAdaptor() {
-        MouseAdapter mouseAdapter = new MouseAdapter() {
+        return new MouseAdapter() {
             private void myPopupEvent(MouseEvent e) {
                 int x = e.getX();
                 int y = e.getY();
-                JTree tree = (JTree)e.getSource();
+
+                JTree tree = (JTree) e.getSource();
                 TreePath path = tree.getPathForLocation(x, y);
                 if (path == null) {
                     return;
@@ -127,26 +148,32 @@ public class TreeNotesApp extends JFrame {
 
                 tree.setSelectionPath(path);
 
-                DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) path.getLastPathComponent();
+                DefaultMutableTreeNode selectedNode =
+                        (DefaultMutableTreeNode) path.getLastPathComponent();
 
                 TreeContextMenu treeContextMenu = new TreeContextMenu(
                         fileSystemManager,
                         TreeNotesApp.this,
                         tree,
                         selectedNode
-                        );
+                );
                 treeContextMenu.show(tree, e.getX(), e.getY());
+            }
 
-            }
+            @Override
             public void mousePressed(MouseEvent e) {
-                if (e.isPopupTrigger()) myPopupEvent(e);
+                if (e.isPopupTrigger()) {
+                    myPopupEvent(e);
+                }
             }
+
+            @Override
             public void mouseReleased(MouseEvent e) {
-                if (e.isPopupTrigger()) myPopupEvent(e);
+                if (e.isPopupTrigger()) {
+                    myPopupEvent(e);
+                }
             }
         };
-
-        return mouseAdapter;
     }
 
     private JMenuBar createMenuBar() {
@@ -175,25 +202,25 @@ public class TreeNotesApp extends JFrame {
     }
 
     private void onTreeSelection(TreeSelectionEvent event) {
-
         TreePath oldPath = event.getOldLeadSelectionPath();
         TreePath newPath = event.getNewLeadSelectionPath();
 
         if (oldPath != null) {
-            DefaultMutableTreeNode oldNode = (DefaultMutableTreeNode) oldPath.getLastPathComponent();
+            DefaultMutableTreeNode oldNode =
+                    (DefaultMutableTreeNode) oldPath.getLastPathComponent();
             TreeItemData oldUserObject = (TreeItemData) oldNode.getUserObject();
 
             fileSystemManager.saveTreeItem(oldUserObject.getFileName(), editor.getText());
         }
 
         if (newPath != null) {
-            DefaultMutableTreeNode newNode = (DefaultMutableTreeNode) newPath.getLastPathComponent();
+            DefaultMutableTreeNode newNode =
+                    (DefaultMutableTreeNode) newPath.getLastPathComponent();
             TreeItemData newUserObject = (TreeItemData) newNode.getUserObject();
 
             statusBar.setText(" Selected: " + newUserObject.getNodeName());
             editor.setText(fileSystemManager.loadData(newUserObject.getFileName()));
         }
-
     }
 
     public static TreeModel buildTreeModel(TreeHierarchyData rootPageNode) {
