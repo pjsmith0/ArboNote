@@ -75,13 +75,14 @@ public class TreeContextMenu extends JPopupMenu {
         //rename.setEnabled(false);
         rename.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
         rename.addActionListener(event -> {
+            TreeItemData treeItemData = (TreeItemData) selectedNode.getUserObject();
             String rawTreeItemName = JOptionPane.showInputDialog(
                     frame,
-                    "Enter a new name..."
+                    "Enter a new name...",
+                    treeItemData.getNodeName()
             );
             if (!StringUtils.isEmpty(rawTreeItemName)) {
                 String treeItemName = Utils.sanitize(rawTreeItemName);
-                TreeItemData treeItemData = (TreeItemData) selectedNode.getUserObject();
                 treeItemData.setNodeName(treeItemName);
 
                 DefaultTreeModel model = (DefaultTreeModel) tree.getModel();
