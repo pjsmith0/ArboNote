@@ -26,23 +26,23 @@ import java.util.Optional;
 
 public class TreeNotesApp extends JFrame {
 
-    private static final String ARTICLE_IMAGE = "/icons/sticky.png";
-    private static final String ROOT_IMAGE = "/icons/lock.png";
+    private static final String ROOT_IMAGE = "/icons/home_16dp.png";
+    private static final String ARTICLE_IMAGE = "/icons/sticky_note_16dp.png";
 
     private final JTree tree;
-    private final JcefHTMLEditor editor;
+    private final BasicTextEditor editor;
     private final JLabel statusBar;
     private Config config = new Config();
     private final FileSystemManager fileSystemManager;
 
     @SneakyThrows
     public TreeNotesApp() {
-        super("Tree Notes");
+        super("ArboNote");
 
         fileSystemManager = new FileSystemManager(config);
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1000, 700);
+        setSize(1024, 768);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
@@ -69,7 +69,7 @@ public class TreeNotesApp extends JFrame {
         JScrollPane treeScrollPane = new JScrollPane(tree);
         treeScrollPane.setBorder(BorderFactory.createTitledBorder("Notes Tree"));
 
-        editor = new JcefHTMLEditor();
+        editor = new BasicTextEditor();
 
         JPanel editorContainer = new JPanel(new BorderLayout());
         editorContainer.setBorder(BorderFactory.createTitledBorder("Editor"));
@@ -80,7 +80,7 @@ public class TreeNotesApp extends JFrame {
                 treeScrollPane,
                 editorContainer
         );
-        splitPane.setDividerLocation(250);
+        splitPane.setDividerLocation(200);
         splitPane.setOneTouchExpandable(true);
         splitPane.setContinuousLayout(true);
 
@@ -93,7 +93,14 @@ public class TreeNotesApp extends JFrame {
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                editor.dispose();
+                TreePath path = tree.getSelectionPath();
+                Optional.ofNullable(path)
+                        .map(TreePath::getLastPathComponent)
+                        .ifPresent(o -> {
+                            DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) o;
+                            TreeItemData userObject = (TreeItemData) selectedNode.getUserObject();
+                            fileSystemManager.saveTreeItem(userObject.getFileName(), editor.getHtml());
+                        });
             }
         });
     }
@@ -148,8 +155,7 @@ public class TreeNotesApp extends JFrame {
 
                 tree.setSelectionPath(path);
 
-                DefaultMutableTreeNode selectedNode =
-                        (DefaultMutableTreeNode) path.getLastPathComponent();
+                DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) path.getLastPathComponent();
 
                 TreeContextMenu treeContextMenu = new TreeContextMenu(
                         fileSystemManager,
@@ -210,16 +216,17 @@ public class TreeNotesApp extends JFrame {
                     (DefaultMutableTreeNode) oldPath.getLastPathComponent();
             TreeItemData oldUserObject = (TreeItemData) oldNode.getUserObject();
 
-            fileSystemManager.saveTreeItem(oldUserObject.getFileName(), editor.getText());
+            String html = editor.getHtml();
+            fileSystemManager.saveTreeItem(oldUserObject.getFileName(), html);
         }
 
         if (newPath != null) {
-            DefaultMutableTreeNode newNode =
-                    (DefaultMutableTreeNode) newPath.getLastPathComponent();
+            DefaultMutableTreeNode newNode = (DefaultMutableTreeNode) newPath.getLastPathComponent();
             TreeItemData newUserObject = (TreeItemData) newNode.getUserObject();
 
             statusBar.setText(" Selected: " + newUserObject.getNodeName());
-            editor.setText(fileSystemManager.loadData(newUserObject.getFileName()));
+            String htmlToSet = fileSystemManager.loadData(newUserObject.getFileName());
+            editor.setHtml(htmlToSet);
         }
     }
 
