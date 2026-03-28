@@ -8,6 +8,7 @@ import com.pjs.util.FileSystemManager;
 import lombok.SneakyThrows;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
@@ -38,6 +39,8 @@ public class TreeNotesApp extends JFrame {
     @SneakyThrows
     public TreeNotesApp() {
         super("ArboNote");
+
+        setIconImage(new ImageIcon(getClass().getResource("/icons/arbonote.png")).getImage());
 
         fileSystemManager = new FileSystemManager(config);
 
@@ -161,6 +164,7 @@ public class TreeNotesApp extends JFrame {
                         fileSystemManager,
                         TreeNotesApp.this,
                         tree,
+                        editor,
                         selectedNode
                 );
                 treeContextMenu.show(tree, e.getX(), e.getY());
@@ -185,23 +189,19 @@ public class TreeNotesApp extends JFrame {
     private JMenuBar createMenuBar() {
         JMenuBar menuBar = new JMenuBar();
 
+        JMenuItem exitMenuItem = new JMenuItem("Exit");
+        exitMenuItem.addActionListener(e -> System.exit(0));
         JMenu fileMenu = new JMenu("File");
-        fileMenu.add(new JMenuItem("New"));
-        fileMenu.add(new JMenuItem("Open"));
-        fileMenu.add(new JMenuItem("Save"));
-        fileMenu.addSeparator();
-        fileMenu.add(new JMenuItem("Exit"));
+        fileMenu.add(exitMenuItem);
 
-        JMenu editMenu = new JMenu("Edit");
-        editMenu.add(new JMenuItem("Cut"));
-        editMenu.add(new JMenuItem("Copy"));
-        editMenu.add(new JMenuItem("Paste"));
-
+        JMenuItem aboutMenuItem = new JMenuItem("About");
+        aboutMenuItem.addActionListener(e -> {
+            showAboutDialog(TreeNotesApp.this);
+        });
         JMenu helpMenu = new JMenu("Help");
-        helpMenu.add(new JMenuItem("About"));
+        helpMenu.add(aboutMenuItem);
 
         menuBar.add(fileMenu);
-        menuBar.add(editMenu);
         menuBar.add(helpMenu);
 
         return menuBar;
@@ -250,5 +250,89 @@ public class TreeNotesApp extends JFrame {
         }
 
         return treeNode;
+    }
+
+    @SneakyThrows
+    public static void showAboutDialog(JFrame parent) {
+        JDialog dialog = new JDialog(parent, "About", true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+        JPanel content = new JPanel(new BorderLayout(16, 16));
+        content.setBorder(new EmptyBorder(20, 20, 20, 20));
+        content.setBackground(Color.WHITE);
+
+        JPanel iconPanel = new JPanel(new BorderLayout());
+        iconPanel.setPreferredSize(new Dimension(100, 100));
+        iconPanel.setOpaque(false);
+
+        JLabel picLabel;
+        java.net.URL imageUrl = TreeNotesApp.class.getResource("/icons/arbonote.png");
+
+        if (imageUrl != null) {
+            ImageIcon originalIcon = new ImageIcon(imageUrl);
+            Image scaled = originalIcon.getImage().getScaledInstance(72, 72, Image.SCALE_SMOOTH);
+            picLabel = new JLabel(new ImageIcon(scaled));
+        } else {
+            picLabel = new JLabel("No Image");
+            picLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        }
+
+        picLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        picLabel.setVerticalAlignment(SwingConstants.CENTER);
+        iconPanel.add(picLabel, BorderLayout.CENTER);
+
+        JPanel textPanel = new JPanel();
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+        textPanel.setOpaque(false);
+
+        JLabel title = new JLabel("ArboNote");
+        title.setFont(new Font("SansSerif", Font.BOLD, 22));
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel version = new JLabel("Version 1.0.0");
+        version.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        version.setForeground(new Color(90, 90, 90));
+        version.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JTextArea description = new JTextArea(
+                "A clean and modern Swing application.\n\n" +
+                        "Built with Java Swing for desktop use.\n" +
+                        "© 2026"
+        );
+        description.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        description.setEditable(false);
+        description.setFocusable(false);
+        description.setOpaque(false);
+        description.setLineWrap(true);
+        description.setWrapStyleWord(true);
+        description.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        textPanel.add(title);
+        textPanel.add(Box.createVerticalStrut(6));
+        textPanel.add(version);
+        textPanel.add(Box.createVerticalStrut(14));
+        textPanel.add(description);
+
+        JPanel centerPanel = new JPanel(new BorderLayout(16, 0));
+        centerPanel.setOpaque(false);
+        centerPanel.add(iconPanel, BorderLayout.WEST);
+        centerPanel.add(textPanel, BorderLayout.CENTER);
+
+        JButton closeButton = new JButton("Close");
+        closeButton.addActionListener(e -> dialog.dispose());
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        buttonPanel.setOpaque(false);
+        buttonPanel.add(closeButton);
+
+        content.add(centerPanel, BorderLayout.CENTER);
+        content.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.setContentPane(content);
+        dialog.pack();
+        dialog.setSize(420, 240);
+        dialog.setResizable(false);
+        dialog.setLocationRelativeTo(parent);
+        dialog.setVisible(true);
     }
 }

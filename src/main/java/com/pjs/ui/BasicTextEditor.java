@@ -9,6 +9,7 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledEditorKit;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLEditorKit;
+import javax.swing.text.html.StyleSheet;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
@@ -42,6 +43,19 @@ public class BasicTextEditor extends JPanel {
         setBackground(new Color(245, 245, 245));
 
         htmlDocument.putProperty("IgnoreCharsetDirective", Boolean.TRUE);
+
+        // Add CSS rules
+        StyleSheet base = htmlKit.getStyleSheet();
+        StyleSheet custom = new StyleSheet();
+        custom.addStyleSheet(base);
+        custom.addRule("""
+                p {
+                    margin-top: 2px;
+                }
+            """);
+
+        // Attach stylesheet to kit
+        htmlKit.setStyleSheet(custom);
 
         editor.setEditorKit(htmlKit);
         editor.setDocument(htmlDocument);
@@ -189,7 +203,7 @@ public class BasicTextEditor extends JPanel {
         if (sourceMode) {
             return;
         }
-        System.out.println(choice);
+
         switch (choice) {
             case PARAGRAPH -> wrapSelection("<p>", "</p>");
             case HEADING_1 -> wrapSelection("<h1>", "</h1>");
@@ -423,13 +437,38 @@ public class BasicTextEditor extends JPanel {
         }
     }
 
-    private String defaultHtml() {
-        return """
-                <html>
-                  <body>
-                  </body>
-                </html>
-                """;
+    public void setCaretPosition(int length) {
+        editor.setCaretPosition(length);
+    }
+
+    public HTMLDocument getDocument() {
+        return htmlDocument;
+    }
+
+    public static String defaultHtml() {
+        return defaultHtml(null);
+    }
+
+    public static String defaultHtml(String header) {
+        if (header == null) {
+            return """
+            <html>
+              <body>
+                <p>&nbsp;</p>
+              </body>
+            </html>
+            """;
+        } else {
+            return """
+            <html>
+              <body>
+                <h1>%s</h1>
+                <hr>
+                <p>&nbsp;</p>
+              </body>
+            </html>
+            """.formatted(header);
+        }
     }
 
     private static String escapeHtml(String text) {

@@ -24,7 +24,7 @@ public class Utils {
         name = name.replaceAll("\\p{Cntrl}", "_");
 
         // Collapse whitespace
-        name = name.trim().replaceAll("\\s+", "_");
+        //name = name.trim().replaceAll("\\s+", "_");
 
         // Remove trailing dots or spaces (Windows restriction)
         name = name.replaceAll("[. ]+$", "");

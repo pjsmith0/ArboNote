@@ -22,6 +22,7 @@ public class TreeContextMenu extends JPopupMenu {
     private final JFrame frame;
     private final JTree tree;
     private final FileSystemManager fileSystemManager;
+    private final BasicTextEditor editor;
     private final DefaultMutableTreeNode selectedNode;
 
     private JMenuItem create;
@@ -31,17 +32,17 @@ public class TreeContextMenu extends JPopupMenu {
 
     private JTextComponent textComponent;
 
-    public TreeContextMenu(FileSystemManager fileSystemManager, JFrame frame, JTree tree, DefaultMutableTreeNode selectedNode) {
+    public TreeContextMenu(FileSystemManager fileSystemManager, JFrame frame, JTree tree, BasicTextEditor editor, DefaultMutableTreeNode selectedNode) {
+        this.fileSystemManager = fileSystemManager;
         this.frame = frame;
         this.tree = tree;
-        this.fileSystemManager = fileSystemManager;
+        this.editor = editor;
         this.selectedNode = selectedNode;
         addPopupMenuItems();
     }
 
     private void addPopupMenuItems() {
         create = new JMenuItem("Create...");
-        //create.setEnabled(false);
         create.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
         create.addActionListener(event -> {
             String rawTreeItemName = JOptionPane.showInputDialog(
@@ -67,12 +68,12 @@ public class TreeContextMenu extends JPopupMenu {
                 tree.scrollPathToVisible(path);
 
                 fileSystemManager.saveTreeToJson(selectedNode.getRoot());
+                editor.setHtml(BasicTextEditor.defaultHtml(rawTreeItemName));
             }
         });
         add(create);
 
         rename = new JMenuItem("Rename");
-        //rename.setEnabled(false);
         rename.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
         rename.addActionListener(event -> {
             TreeItemData treeItemData = (TreeItemData) selectedNode.getUserObject();
