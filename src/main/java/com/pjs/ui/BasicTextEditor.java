@@ -22,6 +22,10 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Objects;
 import java.util.Optional;
+import javax.swing.text.Element;
+import javax.swing.text.html.HTML;
+import java.util.ArrayList;
+import java.util.List;
 
 public class BasicTextEditor extends JPanel {
     public static final String FORMATTING = "Formatting";
@@ -88,27 +92,41 @@ public class BasicTextEditor extends JPanel {
                 "SansSerif", "Serif", "Monospaced", "Dialog", "DialogInput", "Arial", "Courier New", "Times New Roman"
         });
         fontFamily.setSelectedItem("SansSerif");
+        fixComboSize(fontFamily);
         fontFamily.addActionListener(e -> applyFontFamily(Objects.toString(fontFamily.getSelectedItem(), "SansSerif")));
         bar.add(fontFamily);
 
-        JComboBox<String> formatting = new JComboBox<>(new String[] {
+        JComboBox<String> formattingComboBox = new JComboBox<>(new String[] {
                 FORMATTING, PARAGRAPH, HEADING_1, HEADING_2, HEADING_3, PREFORMATTED
         });
-        formatting.addActionListener(e -> {
-            String choice = Objects.toString(formatting.getSelectedItem(), FORMATTING);
+        fixComboSize(formattingComboBox);
+        formattingComboBox.addActionListener(e -> {
+            String choice = Objects.toString(formattingComboBox.getSelectedItem(), FORMATTING);
             if (!FORMATTING.equals(choice)) {
                 applyBlockTag(choice);
-                formatting.setSelectedIndex(0);
+                formattingComboBox.setSelectedIndex(0);
             }
         });
-        bar.add(formatting);
+        bar.add(formattingComboBox);
 
         JComboBox<Integer> fontSize = new JComboBox<>(new Integer[] {
                 8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36
         });
         fontSize.setSelectedItem(14);
+        fixComboSize(fontSize);
         fontSize.addActionListener(e -> applyFontSize((Integer) fontSize.getSelectedItem()));
         bar.add(fontSize);
+
+        bar.addSeparator();
+        bar.add(button(null, "/icons/table_16dp.png", e -> insertTable(), "Add table"));
+        bar.add(button(null, "/icons/table_edit_16dp.png", e -> editTablePreserveContent(), "Edit table"));
+        bar.add(button(null, "/icons/table_remove_16dp.png", e -> removeTable(), "Remove table"));
+        bar.addSeparator();
+        bar.add(button(null, "/icons/add_row_below_16dp.png", e -> addTableRow(), "Add row"));
+        bar.add(button(null, "/icons/remove_row_below_16dp.png", e -> removeTableRow(), "Remove row"));
+        bar.addSeparator();
+        bar.add(button(null, "/icons/add_column_right_16dp.png", e -> addTableColumn(), "Add column"));
+        bar.add(button(null, "/icons/remove_column_right_16dp.png", e -> removeTableColumn(), "Remove column"));
 
         bar.addSeparator();
         bar.add(button(null, "/icons/undo_16dp.png", e -> undo(), "Undo"));
@@ -301,17 +319,7 @@ public class BasicTextEditor extends JPanel {
             return;
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("<table border=\"1\" cellspacing=\"0\" cellpadding=\"6\">");
-        for (int r = 0; r < rows; r++) {
-            sb.append("<tr>");
-            for (int c = 0; c < cols; c++) {
-                sb.append("<td> </td>");
-            }
-            sb.append("</tr>");
-        }
-        sb.append("</table><p></p>");
-        insertHtml(sb.toString());
+        insertHtml(buildTableHtml(rows, cols));
     }
 
     private void wrapSelection(String prefix, String suffix) {
@@ -437,12 +445,497 @@ public class BasicTextEditor extends JPanel {
         }
     }
 
+    private Element findEnclosingElement(int offset, HTML.Tag tag) {
+        if (sourceMode) {
+            return null;
+        }
+
+        offset = Math.max(0, Math.min(offset, htmlDocument.getLength()));
+        Element element = htmlDocument.getCharacterElement(Math.max(0, offset - 1));
+
+        while (element != null) {
+            Object name = element.getAttributes().getAttribute(StyleConstants.NameAttribute);
+            if (tag.equals(name)) {
+                return element;
+            }
+            element = element.getParentElement();
+        }
+
+        return null;
+    }
+
+    private void collectElements(Element root, HTML.Tag tag, List<Element> result) {
+        if (root == null) {
+            return;
+        }
+
+        Object name = root.getAttributes().getAttribute(StyleConstants.NameAttribute);
+        if (tag.equals(name)) {
+            result.add(root);
+        }
+
+        for (int i = 0; i < root.getElementCount(); i++) {
+            collectElements(root.getElement(i), tag, result);
+        }
+    }
+
+    private int getTableRowCount(Element tableElement) {
+        List<Element> rows = new ArrayList<>();
+        collectElements(tableElement, HTML.Tag.TR, rows);
+        return Math.max(1, rows.size());
+    }
+
+    private int getTableColumnCount(Element tableElement) {
+        List<Element> rows = new ArrayList<>();
+        collectElements(tableElement, HTML.Tag.TR, rows);
+
+        int maxCols = 1;
+        for (Element row : rows) {
+            int cols = 0;
+            for (int i = 0; i < row.getElementCount(); i++) {
+                Element cell = row.getElement(i);
+                Object name = cell.getAttributes().getAttribute(StyleConstants.NameAttribute);
+                if (HTML.Tag.TD.equals(name) || HTML.Tag.TH.equals(name)) {
+                    cols++;
+                }
+            }
+            maxCols = Math.max(maxCols, cols);
+        }
+
+        return maxCols;
+    }
+
+    private List<Element> getTableRows(Element tableElement) {
+        List<Element> rows = new ArrayList<>();
+
+        for (int i = 0; i < tableElement.getElementCount(); i++) {
+            Element child = tableElement.getElement(i);
+            Object name = child.getAttributes().getAttribute(StyleConstants.NameAttribute);
+
+            if (HTML.Tag.TR.equals(name)) {
+                rows.add(child);
+            } else if ("tbody".equalsIgnoreCase(String.valueOf(name))
+                    || "thead".equalsIgnoreCase(String.valueOf(name))
+                    || "tfoot".equalsIgnoreCase(String.valueOf(name))) {
+                for (int j = 0; j < child.getElementCount(); j++) {
+                    Element nested = child.getElement(j);
+                    Object nestedName = nested.getAttributes().getAttribute(StyleConstants.NameAttribute);
+                    if (HTML.Tag.TR.equals(nestedName)) {
+                        rows.add(nested);
+                    }
+                }
+            }
+        }
+
+        return rows;
+    }
+
+    private List<Element> getRowCells(Element rowElement) {
+        List<Element> cells = new ArrayList<>();
+
+        for (int i = 0; i < rowElement.getElementCount(); i++) {
+            Element child = rowElement.getElement(i);
+            Object name = child.getAttributes().getAttribute(StyleConstants.NameAttribute);
+            if (HTML.Tag.TD.equals(name) || HTML.Tag.TH.equals(name)) {
+                cells.add(child);
+            }
+        }
+
+        return cells;
+    }
+
+    private String getElementText(Element element) {
+        try {
+            int start = element.getStartOffset();
+            int end = element.getEndOffset();
+            int length = Math.max(0, end - start);
+            String text = htmlDocument.getText(start, length);
+
+            if (text == null) {
+                return "";
+            }
+
+            text = text.replace("\n", " ").replace("\r", " ").trim();
+            return text;
+        } catch (BadLocationException ex) {
+            throw new IllegalStateException("Could not read table cell text.", ex);
+        }
+    }
+
+    private List<List<String>> extractTableData(Element tableElement) {
+        List<List<String>> data = new ArrayList<>();
+        List<Element> rows = getTableRows(tableElement);
+
+        for (Element row : rows) {
+            List<Element> cells = getRowCells(row);
+            List<String> rowData = new ArrayList<>();
+
+            for (Element cell : cells) {
+                rowData.add(getElementText(cell));
+            }
+
+            data.add(rowData);
+        }
+
+        return data;
+    }
+
+    private String safeCellText(String text) {
+        return text == null || text.isBlank() ? " " : escapeHtml(text);
+    }
+
+    private String buildTableHtml(int rows, int cols) {
+        List<List<String>> data = new ArrayList<>();
+        for (int r = 0; r < rows; r++) {
+            List<String> row = new ArrayList<>();
+            for (int c = 0; c < cols; c++) {
+                row.add(" ");
+            }
+            data.add(row);
+        }
+        return buildTableHtml(data);
+    }
+
+    private String buildTableHtml(List<List<String>> data) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<table border=\"1\" cellspacing=\"0\" cellpadding=\"6\">");
+
+        for (List<String> row : data) {
+            sb.append("<tr>");
+            for (String cell : row) {
+                sb.append("<td>").append(safeCellText(cell)).append("</td>");
+            }
+            sb.append("</tr>");
+        }
+
+        sb.append("</table><p></p>");
+        return sb.toString();
+    }
+
+    private List<List<String>> resizeTableData(List<List<String>> original, int targetRows, int targetCols) {
+        List<List<String>> resized = new ArrayList<>();
+
+        for (int r = 0; r < targetRows; r++) {
+            List<String> newRow = new ArrayList<>();
+            List<String> oldRow = r < original.size() ? original.get(r) : List.of();
+
+            for (int c = 0; c < targetCols; c++) {
+                String value = c < oldRow.size() ? oldRow.get(c) : " ";
+                newRow.add(value == null || value.isBlank() ? " " : value);
+            }
+
+            resized.add(newRow);
+        }
+
+        return resized;
+    }
+
+    private void replaceTable(Element tableElement, String newTableHtml) {
+        try {
+            int start = tableElement.getStartOffset();
+            int length = tableElement.getEndOffset() - start;
+
+            htmlDocument.remove(start, length);
+            htmlKit.insertHTML(htmlDocument, start, newTableHtml, 0, 0, HTML.Tag.TABLE);
+        } catch (BadLocationException | IOException ex) {
+            throw new IllegalStateException("Could not replace table.", ex);
+        }
+    }
+
+    private Element requireCurrentTable() {
+        if (sourceMode) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Table editing is only available in rendered mode.",
+                    "Not available",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+            return null;
+        }
+
+        Element table = findEnclosingElement(editor.getCaretPosition(), HTML.Tag.TABLE);
+        if (table == null) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Place the caret inside a table first.",
+                    "No table found",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+            return null;
+        }
+
+        return table;
+    }
+
+//    private void removeTable() {
+//        if (sourceMode) {
+//            JOptionPane.showMessageDialog(
+//                    this,
+//                    "Remove table is only available in rendered mode.",
+//                    "Not available",
+//                    JOptionPane.INFORMATION_MESSAGE
+//            );
+//            return;
+//        }
+//
+//        Element table = findEnclosingElement(editor.getCaretPosition(), HTML.Tag.TABLE);
+//        if (table == null) {
+//            JOptionPane.showMessageDialog(
+//                    this,
+//                    "Place the caret inside a table first.",
+//                    "No table found",
+//                    JOptionPane.INFORMATION_MESSAGE
+//            );
+//            return;
+//        }
+//
+//        try {
+//            int start = table.getStartOffset();
+//            int length = table.getEndOffset() - start;
+//            htmlDocument.remove(start, length);
+//        } catch (BadLocationException ex) {
+//            throw new IllegalStateException("Could not remove table.", ex);
+//        }
+//    }
+
+    private void editTable() {
+        if (sourceMode) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Edit table is only available in rendered mode.",
+                    "Not available",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+            return;
+        }
+
+        Element table = findEnclosingElement(editor.getCaretPosition(), HTML.Tag.TABLE);
+        if (table == null) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Place the caret inside a table first.",
+                    "No table found",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+            return;
+        }
+
+        int currentRows = getTableRowCount(table);
+        int currentCols = getTableColumnCount(table);
+
+        JPanel panel = new JPanel(new GridLayout(2, 2, 6, 6));
+        JTextField rowsField = new JTextField(String.valueOf(currentRows));
+        JTextField colsField = new JTextField(String.valueOf(currentCols));
+
+        panel.add(new JLabel("Rows:"));
+        panel.add(rowsField);
+        panel.add(new JLabel("Columns:"));
+        panel.add(colsField);
+
+        int result = JOptionPane.showConfirmDialog(
+                this,
+                panel,
+                "Edit Table",
+                JOptionPane.OK_CANCEL_OPTION
+        );
+
+        if (result != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        int rows;
+        int cols;
+        try {
+            rows = Math.max(1, Integer.parseInt(rowsField.getText().trim()));
+            cols = Math.max(1, Integer.parseInt(colsField.getText().trim()));
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Rows and columns must be numeric.",
+                    "Invalid table",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
+
+        try {
+            int start = table.getStartOffset();
+            int length = table.getEndOffset() - start;
+
+            htmlDocument.remove(start, length);
+            htmlKit.insertHTML(htmlDocument, start, buildTableHtml(rows, cols), 0, 0, HTML.Tag.TABLE);
+        } catch (BadLocationException | IOException ex) {
+            throw new IllegalStateException("Could not edit table.", ex);
+        }
+    }
+
+    private void editTablePreserveContent() {
+        Element table = requireCurrentTable();
+        if (table == null) {
+            return;
+        }
+
+        List<List<String>> currentData = extractTableData(table);
+        int currentRows = Math.max(1, currentData.size());
+        int currentCols = 1;
+        for (List<String> row : currentData) {
+            currentCols = Math.max(currentCols, row.size());
+        }
+
+        JPanel panel = new JPanel(new GridLayout(2, 2, 6, 6));
+        JTextField rowsField = new JTextField(String.valueOf(currentRows));
+        JTextField colsField = new JTextField(String.valueOf(currentCols));
+
+        panel.add(new JLabel("Rows:"));
+        panel.add(rowsField);
+        panel.add(new JLabel("Columns:"));
+        panel.add(colsField);
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Edit Table", JOptionPane.OK_CANCEL_OPTION);
+        if (result != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        int rows;
+        int cols;
+        try {
+            rows = Math.max(1, Integer.parseInt(rowsField.getText().trim()));
+            cols = Math.max(1, Integer.parseInt(colsField.getText().trim()));
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Rows and columns must be numeric.",
+                    "Invalid table",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
+
+        List<List<String>> resized = resizeTableData(currentData, rows, cols);
+        replaceTable(table, buildTableHtml(resized));
+    }
+
+    private void addTableRow() {
+        Element table = requireCurrentTable();
+        if (table == null) {
+            return;
+        }
+
+        List<List<String>> data = extractTableData(table);
+
+        int cols = 1;
+        for (List<String> row : data) {
+            cols = Math.max(cols, row.size());
+        }
+
+        List<String> newRow = new ArrayList<>();
+        for (int c = 0; c < cols; c++) {
+            newRow.add(" ");
+        }
+
+        data.add(newRow);
+        replaceTable(table, buildTableHtml(data));
+    }
+
+    private void removeTableRow() {
+        Element table = requireCurrentTable();
+        if (table == null) {
+            return;
+        }
+
+        List<List<String>> data = extractTableData(table);
+        if (data.size() <= 1) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "A table must have at least one row.",
+                    "Cannot remove row",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+            return;
+        }
+
+        data.remove(data.size() - 1);
+        replaceTable(table, buildTableHtml(data));
+    }
+
+    private void addTableColumn() {
+        Element table = requireCurrentTable();
+        if (table == null) {
+            return;
+        }
+
+        List<List<String>> data = extractTableData(table);
+        if (data.isEmpty()) {
+            data.add(new ArrayList<>());
+        }
+
+        for (List<String> row : data) {
+            row.add(" ");
+        }
+
+        replaceTable(table, buildTableHtml(data));
+    }
+
+    private void removeTableColumn() {
+        Element table = requireCurrentTable();
+        if (table == null) {
+            return;
+        }
+
+        List<List<String>> data = extractTableData(table);
+
+        int cols = 1;
+        for (List<String> row : data) {
+            cols = Math.max(cols, row.size());
+        }
+
+        if (cols <= 1) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "A table must have at least one column.",
+                    "Cannot remove column",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+            return;
+        }
+
+        for (List<String> row : data) {
+            if (!row.isEmpty()) {
+                row.remove(row.size() - 1);
+            }
+        }
+
+        replaceTable(table, buildTableHtml(data));
+    }
+
+    private void removeTable() {
+        Element table = requireCurrentTable();
+        if (table == null) {
+            return;
+        }
+
+        try {
+            int start = table.getStartOffset();
+            int length = table.getEndOffset() - start;
+            htmlDocument.remove(start, length);
+        } catch (BadLocationException ex) {
+            throw new IllegalStateException("Could not remove table.", ex);
+        }
+    }
+
     public void setCaretPosition(int length) {
         editor.setCaretPosition(length);
     }
 
     public HTMLDocument getDocument() {
         return htmlDocument;
+    }
+
+    private void fixComboSize(JComboBox<?> combo) {
+        Dimension size = combo.getPreferredSize();
+        size.width += 10;
+        combo.setPreferredSize(size);
+        combo.setMaximumSize(size);
     }
 
     public static String defaultHtml() {
