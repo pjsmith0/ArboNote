@@ -15,6 +15,8 @@ import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
@@ -83,6 +85,7 @@ public class BasicTextEditor extends JPanel {
         add(toolbarPanel, BorderLayout.NORTH);
         add(scrollPane, BorderLayout.CENTER);
 
+        installShortcuts();
     }
 
     private JToolBar createToolbarRowOne() {
@@ -118,19 +121,19 @@ public class BasicTextEditor extends JPanel {
         bar.add(fontSize);
 
         bar.addSeparator();
-        bar.add(button(null, "/icons/table_16dp.png", e -> insertTable(), "Add table"));
-        bar.add(button(null, "/icons/table_edit_16dp.png", e -> editTablePreserveContent(), "Edit table"));
-        bar.add(button(null, "/icons/table_remove_16dp.png", e -> removeTable(), "Remove table"));
+        bar.add(button(null, "/icons/table_16dp.png", e -> insertTable(), "Add table (Ctrl+Alt+T)", null));
+        bar.add(button(null, "/icons/table_edit_16dp.png", e -> editTablePreserveContent(), "Edit table", null));
+        bar.add(button(null, "/icons/table_remove_16dp.png", e -> removeTable(), "Remove table", null));
         bar.addSeparator();
-        bar.add(button(null, "/icons/add_row_below_16dp.png", e -> addTableRow(), "Add row"));
-        bar.add(button(null, "/icons/remove_row_below_16dp.png", e -> removeTableRow(), "Remove row"));
+        bar.add(button(null, "/icons/add_row_below_16dp.png", e -> addTableRow(), "Add row", null));
+        bar.add(button(null, "/icons/remove_row_below_16dp.png", e -> removeTableRow(), "Remove row", null));
         bar.addSeparator();
-        bar.add(button(null, "/icons/add_column_right_16dp.png", e -> addTableColumn(), "Add column"));
-        bar.add(button(null, "/icons/remove_column_right_16dp.png", e -> removeTableColumn(), "Remove column"));
+        bar.add(button(null, "/icons/add_column_right_16dp.png", e -> addTableColumn(), "Add column", null));
+        bar.add(button(null, "/icons/remove_column_right_16dp.png", e -> removeTableColumn(), "Remove column", null));
 
         bar.addSeparator();
-        bar.add(button(null, "/icons/undo_16dp.png", e -> undo(), "Undo"));
-        bar.add(button(null, "/icons/redo_16dp.png", e -> redo(), "Redo"));
+        bar.add(button(null, "/icons/undo_16dp.png", e -> undo(), "Undo (Ctrl+Z)", null));
+        bar.add(button(null, "/icons/redo_16dp.png", e -> redo(), "Redo (Ctrl+Y / Ctrl+Shift+Z)", null));
 
         return bar;
     }
@@ -138,33 +141,86 @@ public class BasicTextEditor extends JPanel {
     private JToolBar createToolbarRowTwo() {
         JToolBar bar = baseToolbar();
 
-        bar.add(button(null, "/icons/format_bold_16dp.png", e -> new StyledEditorKit.BoldAction().actionPerformed(e), "Bold")).setFont(bar.getFont().deriveFont(Font.BOLD));
-        bar.add(button(null, "/icons/format_italic_16dp.png", e -> new StyledEditorKit.ItalicAction().actionPerformed(e), "Italic"));
-        bar.add(button(null, "/icons/format_underlined_16dp.png", e -> new StyledEditorKit.UnderlineAction().actionPerformed(e), "Underline"));
-        bar.add(button(null, "/icons/colors_16dp.png", e -> chooseTextColor(), "Text color"));
+        bar.add(button(null, "/icons/format_bold_16dp.png", e -> new StyledEditorKit.BoldAction().actionPerformed(e), "Bold (Ctrl+B)", null)).setFont(bar.getFont().deriveFont(Font.BOLD));
+        bar.add(button(null, "/icons/format_italic_16dp.png", e -> new StyledEditorKit.ItalicAction().actionPerformed(e), "Italic (Ctrl+I)", null));
+        bar.add(button(null, "/icons/format_underlined_16dp.png", e -> new StyledEditorKit.UnderlineAction().actionPerformed(e), "Underline (Ctrl+U)", null));
+        bar.add(button(null, "/icons/colors_16dp.png", e -> chooseTextColor(), "Text color", null));
 
         bar.addSeparator();
-        bar.add(button(null, "/icons/format_indent_decrease_16dp.png", e -> insertIndentHtml(false), "Outdent"));
-        bar.add(button(null, "/icons/format_indent_increase_16dp.png", e -> insertIndentHtml(true), "Indent"));
-        bar.add(button(null, "/icons/format_quote_16dp.png", e -> wrapSelection("<blockquote>", "</blockquote>"), "Quote"));
-        bar.add(button(null, "/icons/format_list_numbered_16dp.png", e -> insertList(true), "Numbered list"));
-        bar.add(button(null, "/icons/list_16dp.png", e -> insertList(false), "Bulleted list"));
+        bar.add(button(null, "/icons/format_indent_decrease_16dp.png", e -> insertIndentHtml(false), "Outdent", null));
+        bar.add(button(null, "/icons/format_indent_increase_16dp.png", e -> insertIndentHtml(true), "Indent", null));
+        bar.add(button(null, "/icons/format_quote_16dp.png", e -> wrapSelection("<blockquote>", "</blockquote>"), "Quote", null));
+        bar.add(button(null, "/icons/format_list_numbered_16dp.png", e -> insertList(true), "Numbered list", null));
+        bar.add(button(null, "/icons/list_16dp.png", e -> insertList(false), "Bulleted list", null));
 
         bar.addSeparator();
-        bar.add(button(null, "/icons/link_16dp.png", e -> insertLink(), "Insert link"));
-        bar.add(button(null, "/icons/link_off_16dp.png", e -> unwrapAnchor(), "Remove link"));
-        bar.add(button(null, "/icons/image_16dp.png", e -> insertImage(), "Insert image"));
-        bar.add(button(null, "/icons/hide_image_16dp.png", e -> insertTable(), "Insert table"));
-        bar.add(button(null, "/icons/horizontal_rule_16dp.png", e -> insertHtml("<hr/>"), "Horizontal rule"));
+        bar.add(button(null, "/icons/link_16dp.png", e -> insertLink(), "Insert link (Ctrl+K)", null));
+        bar.add(button(null, "/icons/link_off_16dp.png", e -> unwrapAnchor(), "Remove link", null));
+        bar.add(button(null, "/icons/image_16dp.png", e -> insertImage(), "Insert image", null));
+        bar.add(button(null, "/icons/hide_image_16dp.png", e -> insertTable(), "Insert table", null));
+        bar.add(button(null, "/icons/horizontal_rule_16dp.png", e -> insertHtml("<hr/>"), "Horizontal rule", null));
 
         bar.addSeparator();
-        bar.add(button(null, "/icons/format_align_left_16dp.png", e -> new StyledEditorKit.AlignmentAction("Left", StyleConstants.ALIGN_LEFT).actionPerformed(e), "Align left"));
-        bar.add(button(null, "/icons/format_align_center_16dp.png", e -> new StyledEditorKit.AlignmentAction("Center", StyleConstants.ALIGN_CENTER).actionPerformed(e), "Align center"));
-        bar.add(button(null, "/icons/format_align_right_16dp.png", e -> new StyledEditorKit.AlignmentAction("Right", StyleConstants.ALIGN_RIGHT).actionPerformed(e), "Align right"));
-        bar.add(button(null, "/icons/format_align_justify_16.png", e -> new StyledEditorKit.AlignmentAction("Justify", StyleConstants.ALIGN_JUSTIFIED).actionPerformed(e), "Justify"));
-        bar.add(button(null, "/icons/code_16dp.png", e -> toggleSourceMode(), "Toggle HTML source"));
+        bar.add(button(null, "/icons/format_align_left_16dp.png", e -> new StyledEditorKit.AlignmentAction("Left", StyleConstants.ALIGN_LEFT).actionPerformed(e), "Align left", null));
+        bar.add(button(null, "/icons/format_align_center_16dp.png", e -> new StyledEditorKit.AlignmentAction("Center", StyleConstants.ALIGN_CENTER).actionPerformed(e), "Align center", null));
+        bar.add(button(null, "/icons/format_align_right_16dp.png", e -> new StyledEditorKit.AlignmentAction("Right", StyleConstants.ALIGN_RIGHT).actionPerformed(e), "Align right", null));
+        bar.add(button(null, "/icons/format_align_justify_16.png", e -> new StyledEditorKit.AlignmentAction("Justify", StyleConstants.ALIGN_JUSTIFIED).actionPerformed(e), "Justify", null));
+        bar.add(button(null, "/icons/code_16dp.png", e -> toggleSourceMode(), "Toggle HTML source (Ctrl+Shift+H)", null));
 
         return bar;
+    }
+
+    private void installShortcuts() {
+        int menuMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+
+        bindShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_B, menuMask), "bold", new StyledEditorKit.BoldAction());
+        bindShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_I, menuMask), "italic", new StyledEditorKit.ItalicAction());
+        bindShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_U, menuMask), "underline", new StyledEditorKit.UnderlineAction());
+
+        bindShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_Z, menuMask), "undo", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                undo();
+            }
+        });
+        bindShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_Y, menuMask), "redo", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                redo();
+            }
+        });
+        bindShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_Z, menuMask | InputEvent.SHIFT_DOWN_MASK), "redoShift", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                redo();
+            }
+        });
+
+        bindShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_K, menuMask), "insertLink", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                insertLink();
+            }
+        });
+        bindShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_H, menuMask | InputEvent.SHIFT_DOWN_MASK), "toggleHtmlSource", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                toggleSourceMode();
+            }
+        });
+        bindShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_T, menuMask | InputEvent.ALT_DOWN_MASK), "insertTable", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                insertTable();
+            }
+        });
+    }
+
+    private void bindShortcut(KeyStroke keyStroke, String actionKey, Action action) {
+        InputMap inputMap = editor.getInputMap(JComponent.WHEN_FOCUSED);
+        ActionMap actionMap = editor.getActionMap();
+        inputMap.put(keyStroke, actionKey);
+        actionMap.put(actionKey, action);
     }
 
     private JToolBar baseToolbar() {
@@ -177,12 +233,13 @@ public class BasicTextEditor extends JPanel {
         return bar;
     }
 
-    private JButton button(String text, String iconPath, java.awt.event.ActionListener action, String tooltip) {
+    private JButton button(String text, String iconPath, java.awt.event.ActionListener action, String tooltip, Character mnemonic) {
         JButton button = new JButton(text);
         button.addActionListener(action);
         button.setToolTipText(tooltip);
         button.setFocusable(false);
         Optional.ofNullable(iconPath).ifPresent(s -> button.setIcon(new ImageIcon(getClass().getResource(s))));
+        Optional.ofNullable(mnemonic).ifPresent(c -> button.setMnemonic(c.charValue()));
         button.setMargin(new Insets(4, 8, 4, 8));
         return button;
     }
@@ -666,37 +723,6 @@ public class BasicTextEditor extends JPanel {
 
         return table;
     }
-
-//    private void removeTable() {
-//        if (sourceMode) {
-//            JOptionPane.showMessageDialog(
-//                    this,
-//                    "Remove table is only available in rendered mode.",
-//                    "Not available",
-//                    JOptionPane.INFORMATION_MESSAGE
-//            );
-//            return;
-//        }
-//
-//        Element table = findEnclosingElement(editor.getCaretPosition(), HTML.Tag.TABLE);
-//        if (table == null) {
-//            JOptionPane.showMessageDialog(
-//                    this,
-//                    "Place the caret inside a table first.",
-//                    "No table found",
-//                    JOptionPane.INFORMATION_MESSAGE
-//            );
-//            return;
-//        }
-//
-//        try {
-//            int start = table.getStartOffset();
-//            int length = table.getEndOffset() - start;
-//            htmlDocument.remove(start, length);
-//        } catch (BadLocationException ex) {
-//            throw new IllegalStateException("Could not remove table.", ex);
-//        }
-//    }
 
     private void editTable() {
         if (sourceMode) {
