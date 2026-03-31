@@ -150,6 +150,7 @@ public class BasicTextEditor extends JPanel {
 
         bar.addSeparator();
         bar.add(button(null, "/icons/chat_paste_go_16dp.png", e -> pasteAsPreformatted(), "Paste unformatted as <pre> (Ctrl+Shift+V)", null));
+        bar.add(button(null, "/icons/code_16dp.png", e -> insertUnformattedText(), "Enter unformatted text as <pre>", null));
 
         return bar;
     }
@@ -233,6 +234,12 @@ public class BasicTextEditor extends JPanel {
             @Override
             public void actionPerformed(ActionEvent e) {
                 pasteAsPreformatted();
+            }
+        });
+        bindShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_V, menuMask | InputEvent.SHIFT_DOWN_MASK | InputEvent.ALT_DOWN_MASK), "insertUnformattedText", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                insertUnformattedText();
             }
         });
     }
@@ -404,6 +411,32 @@ public class BasicTextEditor extends JPanel {
 
     private String normalizeLineEndings(String text) {
         return text.replace("\r\n", "\n").replace('\r', '\n');
+    }
+
+    private void insertUnformattedText() {
+        JTextArea textArea = new JTextArea(12, 50);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        int result = JOptionPane.showConfirmDialog(
+                this,
+                scrollPane,
+                "Enter Unformatted Text",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+        );
+
+        if (result != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        String text = textArea.getText();
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+
+        replaceSelectionWithHtml("<pre>" + escapeHtml(normalizeLineEndings(text)) + "</pre>");
     }
 
     private void insertTable() {
