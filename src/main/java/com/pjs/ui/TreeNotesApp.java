@@ -18,6 +18,7 @@ import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 import java.awt.*;
+import java.awt.event.ComponentListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
@@ -228,6 +229,9 @@ public class TreeNotesApp extends JFrame {
             String htmlToSet = fileSystemManager.loadData(newUserObject.getFileName());
             editor.setHtml(htmlToSet);
         }
+
+        boolean hasSelection = tree.getSelectionPath() != null;
+        editor.setEditorActive(hasSelection);
     }
 
     public static TreeModel buildTreeModel(TreeHierarchyData rootPageNode) {
@@ -335,4 +339,11 @@ public class TreeNotesApp extends JFrame {
         dialog.setLocationRelativeTo(parent);
         dialog.setVisible(true);
     }
+
+//    @Override
+//    public synchronized void addComponentListener(ComponentListener l) {
+//        super.addComponentListener(l);
+//        DefaultMutableTreeNode firstLeaf = ((DefaultMutableTreeNode) tree.getModel().getRoot()).getFirstLeaf();
+//        tree.setSelectionPath(new TreePath(firstLeaf.getPath()));
+//    }
 }

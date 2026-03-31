@@ -14,6 +14,8 @@ import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
 import java.awt.*;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
@@ -36,6 +38,7 @@ public class BasicTextEditor extends JPanel {
     public static final String HEADING_2 = "Heading 2";
     public static final String HEADING_3 = "Heading 3";
     public static final String PREFORMATTED = "Preformatted";
+
     private final JEditorPane editor = new JEditorPane();
     private final HTMLEditorKit htmlKit = new HTMLEditorKit();
     private HTMLDocument htmlDocument = (HTMLDocument) htmlKit.createDefaultDocument();
@@ -59,6 +62,13 @@ public class BasicTextEditor extends JPanel {
                     margin-top: 2px;
                 }
             """);
+        custom.addRule("""
+                pre {
+                    font-family: monospace;
+                    white-space: pre-wrap;
+                    margin: 6px 0;
+                }
+        """);
 
         // Attach stylesheet to kit
         htmlKit.setStyleSheet(custom);
@@ -68,6 +78,7 @@ public class BasicTextEditor extends JPanel {
         editor.setContentType("text/html");
         editor.setBorder(new EmptyBorder(16, 16, 16, 16));
         editor.setBackground(Color.WHITE);
+        editor.setFocusTraversalKeysEnabled(false);
         lastRenderedHtml = getHtml();
 
         htmlDocument.addUndoableEditListener(undoManager);
@@ -86,6 +97,8 @@ public class BasicTextEditor extends JPanel {
         add(scrollPane, BorderLayout.CENTER);
 
         installShortcuts();
+
+        setEditorActive(false);
     }
 
     private JToolBar createToolbarRowOne() {
@@ -135,6 +148,9 @@ public class BasicTextEditor extends JPanel {
         bar.add(button(null, "/icons/undo_16dp.png", e -> undo(), "Undo (Ctrl+Z)", null));
         bar.add(button(null, "/icons/redo_16dp.png", e -> redo(), "Redo (Ctrl+Y / Ctrl+Shift+Z)", null));
 
+        bar.addSeparator();
+        bar.add(button(null, "/icons/chat_paste_go_16dp.png", e -> pasteAsPreformatted(), "Paste unformatted as <pre> (Ctrl+Shift+V)", null));
+
         return bar;
     }
 
@@ -157,7 +173,6 @@ public class BasicTextEditor extends JPanel {
         bar.add(button(null, "/icons/link_16dp.png", e -> insertLink(), "Insert link (Ctrl+K)", null));
         bar.add(button(null, "/icons/link_off_16dp.png", e -> unwrapAnchor(), "Remove link", null));
         bar.add(button(null, "/icons/image_16dp.png", e -> insertImage(), "Insert image", null));
-        bar.add(button(null, "/icons/hide_image_16dp.png", e -> insertTable(), "Insert table", null));
         bar.add(button(null, "/icons/horizontal_rule_16dp.png", e -> insertHtml("<hr/>"), "Horizontal rule", null));
 
         bar.addSeparator();
@@ -165,7 +180,7 @@ public class BasicTextEditor extends JPanel {
         bar.add(button(null, "/icons/format_align_center_16dp.png", e -> new StyledEditorKit.AlignmentAction("Center", StyleConstants.ALIGN_CENTER).actionPerformed(e), "Align center", null));
         bar.add(button(null, "/icons/format_align_right_16dp.png", e -> new StyledEditorKit.AlignmentAction("Right", StyleConstants.ALIGN_RIGHT).actionPerformed(e), "Align right", null));
         bar.add(button(null, "/icons/format_align_justify_16.png", e -> new StyledEditorKit.AlignmentAction("Justify", StyleConstants.ALIGN_JUSTIFIED).actionPerformed(e), "Justify", null));
-        bar.add(button(null, "/icons/code_16dp.png", e -> toggleSourceMode(), "Toggle HTML source (Ctrl+Shift+H)", null));
+        bar.add(button(null, "/icons/html_16dp.png", e -> toggleSourceMode(), "Toggle HTML source (Ctrl+Shift+H)", null));
 
         return bar;
     }
@@ -212,6 +227,12 @@ public class BasicTextEditor extends JPanel {
             @Override
             public void actionPerformed(ActionEvent e) {
                 insertTable();
+            }
+        });
+        bindShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_V, menuMask | InputEvent.SHIFT_DOWN_MASK), "pasteAsPreformatted", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                pasteAsPreformatted();
             }
         });
     }
@@ -350,6 +371,39 @@ public class BasicTextEditor extends JPanel {
             return;
         }
         insertHtml("<img src=\"" + escapeAttribute(pathOrUrl.trim()) + "\" alt=\"image\"/>");
+    }
+
+    private void pasteAsPreformatted() {
+        try {
+            Transferable transferable = Toolkit.getDefaultToolkit().getSystemClipboard().getContents(null);
+            if (transferable == null || !transferable.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                Toolkit.getDefaultToolkit().beep();
+                return;
+            }
+
+            String text = (String) transferable.getTransferData(DataFlavor.stringFlavor);
+            if (text == null || text.isEmpty()) {
+                return;
+            }
+
+            if (sourceMode) {
+                editor.replaceSelection("<pre>" + escapeHtml(text) + "</pre>");
+                return;
+            }
+
+            replaceSelectionWithHtml("<pre>" + escapeHtml(normalizeLineEndings(text)) + "</pre>");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Could not paste plain text from clipboard.\n" + ex.getMessage(),
+                    "Paste failed",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
+    }
+
+    private String normalizeLineEndings(String text) {
+        return text.replace("\r\n", "\n").replace('\r', '\n');
     }
 
     private void insertTable() {
@@ -962,6 +1016,14 @@ public class BasicTextEditor extends JPanel {
         size.width += 10;
         combo.setPreferredSize(size);
         combo.setMaximumSize(size);
+    }
+
+    public void setEditorActive(boolean active) {
+        editor.setEditable(active);
+        editor.setEnabled(active);
+
+        // Optional: visual feedback
+        editor.setBackground(active ? Color.WHITE : new Color(240, 240, 240));
     }
 
     public static String defaultHtml() {
