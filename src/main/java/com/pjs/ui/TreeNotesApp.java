@@ -225,7 +225,7 @@ public class TreeNotesApp extends JFrame {
             DefaultMutableTreeNode newNode = (DefaultMutableTreeNode) newPath.getLastPathComponent();
             TreeItemData newUserObject = (TreeItemData) newNode.getUserObject();
 
-            statusBar.setText(" Selected: " + newUserObject.getNodeName());
+            statusBar.setText(" Selected: %s   >>   FileName: %s".formatted(newUserObject.getNodeName(), newUserObject.getFileName()));
             String htmlToSet = fileSystemManager.loadData(newUserObject.getFileName());
             editor.setHtml(htmlToSet);
         }

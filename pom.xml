@@ -16,9 +16,9 @@
     <java.version>25</java.version>
     <slf4j.version>1.7.36</slf4j.version>
     <flatlaf.version>3.6.2</flatlaf.version>
-<!--    <commons-io.version>2.11.0</commons-io.version>-->
     <commons-codec.version>1.13</commons-codec.version>
     <jcefmaven.version>143.0.14</jcefmaven.version>
+    <lombok.version>1.18.42</lombok.version>
   </properties>
 
   <dependencyManagement>
@@ -38,7 +38,7 @@
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
-      <version>1.18.42</version>
+      <version>${lombok.version}</version>
       <scope>provided</scope>
     </dependency>
 
@@ -142,7 +142,7 @@
             <path>
               <groupId>org.projectlombok</groupId>
               <artifactId>lombok</artifactId>
-              <version>1.18.44</version>
+              <version>${lombok.version}</version>
             </path>
           </annotationProcessorPaths>
         </configuration>

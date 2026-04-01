@@ -61,12 +61,15 @@ public class BasicTextEditor extends JPanel {
                 p {
                     margin-top: 2px;
                 }
-            """);
+        """);
         custom.addRule("""
                 pre {
-                    font-family: monospace;
-                    white-space: pre-wrap;
-                    margin: 6px 0;
+                     font-family: monospace;
+                     white-space: pre-wrap;
+                     margin: 6px 0;
+                     background-color: #f4f4f4;
+                     border: 1px solid #cccccc;
+                     padding: 8px;
                 }
         """);
 
@@ -149,8 +152,8 @@ public class BasicTextEditor extends JPanel {
         bar.add(button(null, "/icons/redo_16dp.png", e -> redo(), "Redo (Ctrl+Y / Ctrl+Shift+Z)", null));
 
         bar.addSeparator();
-        bar.add(button(null, "/icons/chat_paste_go_16dp.png", e -> pasteAsPreformatted(), "Paste unformatted as <pre> (Ctrl+Shift+V)", null));
-        bar.add(button(null, "/icons/code_16dp.png", e -> insertUnformattedText(), "Enter unformatted text as <pre>", null));
+
+        bar.add(button(null, "/icons/html_16dp.png", e -> toggleSourceMode(), "Toggle HTML source (Ctrl+Shift+H)", null));
 
         return bar;
     }
@@ -181,7 +184,10 @@ public class BasicTextEditor extends JPanel {
         bar.add(button(null, "/icons/format_align_center_16dp.png", e -> new StyledEditorKit.AlignmentAction("Center", StyleConstants.ALIGN_CENTER).actionPerformed(e), "Align center", null));
         bar.add(button(null, "/icons/format_align_right_16dp.png", e -> new StyledEditorKit.AlignmentAction("Right", StyleConstants.ALIGN_RIGHT).actionPerformed(e), "Align right", null));
         bar.add(button(null, "/icons/format_align_justify_16.png", e -> new StyledEditorKit.AlignmentAction("Justify", StyleConstants.ALIGN_JUSTIFIED).actionPerformed(e), "Justify", null));
-        bar.add(button(null, "/icons/html_16dp.png", e -> toggleSourceMode(), "Toggle HTML source (Ctrl+Shift+H)", null));
+
+        bar.addSeparator();
+        bar.add(button(null, "/icons/chat_paste_go_16dp.png", e -> pasteAsPreformatted(), "Paste unformatted as <pre> (Ctrl+Shift+V)", null));
+        bar.add(button(null, "/icons/code_16dp.png", e -> insertUnformattedText(), "Enter unformatted text as <pre>", null));
 
         return bar;
     }
