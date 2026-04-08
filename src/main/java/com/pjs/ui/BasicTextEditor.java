@@ -2,6 +2,7 @@ package com.pjs.ui;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.HyperlinkEvent;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.MutableAttributeSet;
 import javax.swing.text.SimpleAttributeSet;
@@ -39,7 +40,12 @@ public class BasicTextEditor extends JPanel {
     public static final String HEADING_3 = "Heading 3";
     public static final String PREFORMATTED = "Preformatted";
 
-    private final JEditorPane editor = new JEditorPane();
+    private final JEditorPane editor = new JEditorPane() {
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+    };
     private final HTMLEditorKit htmlKit = new HTMLEditorKit();
     private HTMLDocument htmlDocument = (HTMLDocument) htmlKit.createDefaultDocument();
     private final UndoManager undoManager = new UndoManager();
