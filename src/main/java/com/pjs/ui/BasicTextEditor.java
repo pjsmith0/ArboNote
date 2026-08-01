@@ -14,6 +14,8 @@ import javax.swing.text.html.StyleSheet;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
+import javax.swing.text.Element;
+import javax.swing.text.html.HTML;
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
@@ -46,6 +48,7 @@ public class BasicTextEditor extends JPanel {
             return true;
         }
     };
+    //private final HTMLEditorKit htmlKit = new WrappingHtmlEditorKit();
     private final HTMLEditorKit htmlKit = new HTMLEditorKit();
     private HTMLDocument htmlDocument = (HTMLDocument) htmlKit.createDefaultDocument();
     private final UndoManager undoManager = new UndoManager();
@@ -71,7 +74,6 @@ public class BasicTextEditor extends JPanel {
         custom.addRule("""
                 pre {
                      font-family: monospace;
-                     white-space: pre-wrap;
                      margin: 6px 0;
                      background-color: #f4f4f4;
                      border: 1px solid #cccccc;
@@ -83,8 +85,8 @@ public class BasicTextEditor extends JPanel {
         htmlKit.setStyleSheet(custom);
 
         editor.setEditorKit(htmlKit);
-        editor.setDocument(htmlDocument);
         editor.setContentType("text/html");
+        editor.setDocument(htmlDocument);
         editor.setBorder(new EmptyBorder(16, 16, 16, 16));
         editor.setBackground(Color.WHITE);
         editor.setFocusTraversalKeysEnabled(false);
@@ -107,7 +109,32 @@ public class BasicTextEditor extends JPanel {
 
         installShortcuts();
 
+        installCleanCopyAction();
+
         setEditorActive(false);
+    }
+
+    private void installCleanCopyAction() {
+        Action cleanCopy = new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String selected = editor.getSelectedText();
+                if (selected == null || selected.isEmpty()) {
+                    return;
+                }
+
+                // Defensive cleanup only
+                selected = selected.replace("\u200B", "");   // zero-width space
+                selected = selected.replace("\u00AD", "");   // soft hyphen
+
+                Toolkit.getDefaultToolkit()
+                        .getSystemClipboard()
+                        .setContents(new java.awt.datatransfer.StringSelection(selected), null);
+            }
+        };
+
+        int menuMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+        bindShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_C, menuMask), "cleanCopy", cleanCopy);
     }
 
     private JToolBar createToolbarRowOne() {
@@ -577,6 +604,7 @@ public class BasicTextEditor extends JPanel {
 
     public void setHtml(String html) {
         try {
+            editor.setEditorKitForContentType("text/html", htmlKit);
             editor.setContentType("text/html");
 
             HTMLDocument newDoc = (HTMLDocument) htmlKit.createDefaultDocument();
@@ -591,9 +619,7 @@ public class BasicTextEditor extends JPanel {
             }
 
             htmlDocument = newDoc;
-
             editor.setDocument(htmlDocument);
-
             sourceMode = false;
 
         } catch (IOException | BadLocationException ex) {

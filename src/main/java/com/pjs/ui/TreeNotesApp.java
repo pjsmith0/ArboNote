@@ -1,5 +1,6 @@
 package com.pjs.ui;
 
+import ca.weblite.webview.swing.WebViewComponent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pjs.Config;
 import com.pjs.model.TreeHierarchyData;
@@ -32,7 +33,8 @@ public class TreeNotesApp extends JFrame {
     private static final String ARTICLE_IMAGE = "/icons/sticky_note_16dp.png";
 
     private final JTree tree;
-    private final BasicTextEditor editor;
+    //private final BasicTextEditor editor;
+    private final WebViewComponent webViewComponent = WebViewComponent.create();
     private final JLabel statusBar;
     private Config config = new Config();
     private final FileSystemManager fileSystemManager;
@@ -73,11 +75,36 @@ public class TreeNotesApp extends JFrame {
         JScrollPane treeScrollPane = new JScrollPane(tree);
         treeScrollPane.setBorder(BorderFactory.createTitledBorder("Notes Tree"));
 
-        editor = new BasicTextEditor();
+        //editor = new BasicTextEditor();
+        final String html =
+                "<!doctype html><html><head><meta charset='utf-8'>"
+                        + "<title>evalAsync demo</title>"
+                        + "<style>"
+                        + "  body{font:14px/1.4 system-ui,sans-serif;padding:1em;"
+                        + "    max-width:48em;margin:0 auto;}"
+                        + "  h1{font-size:1.2em;margin:0 0 .4em 0;}"
+                        + "  #target{padding:.3em .5em;background:#eef;"
+                        + "    border:1px solid #99c;border-radius:.3em;display:inline-block;}"
+                        + "  #spacer{height:1500px;background:linear-gradient("
+                        + "    #fff,#dde);margin-top:1em;border-top:1px dashed #999;}"
+                        + "</style></head><body>"
+                        + "<h1>WebViewAsyncEvalDemo</h1>"
+                        + "<p>Select some text in this paragraph, scroll around, and try"
+                        + " the buttons in the bottom panel.  Each click runs an"
+                        + " <code>evalAsync</code> against the loaded page and prints"
+                        + " the future's resolution in the text area below.</p>"
+                        + "<p id='target' data-line='42'>This paragraph carries"
+                        + " <code>data-line=\"42\"</code> &mdash; the &lsquo;query"
+                        + " data-attribute&rsquo; button reads it.</p>"
+                        + "<div id='spacer'>Scroll me &mdash; the &lsquo;scroll"
+                        + " position&rsquo; button reads window.scrollX/Y.</div>"
+                        + "</body></html>";
+
+        webViewComponent.setUrl("data:text/html;charset=utf-8," + html);
 
         JPanel editorContainer = new JPanel(new BorderLayout());
         editorContainer.setBorder(BorderFactory.createTitledBorder("Editor"));
-        editorContainer.add(editor, BorderLayout.CENTER);
+        editorContainer.add(webViewComponent, BorderLayout.CENTER);
 
         JSplitPane splitPane = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT,
@@ -103,7 +130,7 @@ public class TreeNotesApp extends JFrame {
                         .ifPresent(o -> {
                             DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) o;
                             TreeItemData userObject = (TreeItemData) selectedNode.getUserObject();
-                            fileSystemManager.saveTreeItem(userObject.getFileName(), editor.getHtml());
+                            //fileSystemManager.saveTreeItem(userObject.getFileName(), editor.getHtml());
                         });
             }
         });
@@ -165,7 +192,7 @@ public class TreeNotesApp extends JFrame {
                         fileSystemManager,
                         TreeNotesApp.this,
                         tree,
-                        editor,
+                        null/*editor*/,
                         selectedNode
                 );
                 treeContextMenu.show(tree, e.getX(), e.getY());
@@ -217,8 +244,8 @@ public class TreeNotesApp extends JFrame {
                     (DefaultMutableTreeNode) oldPath.getLastPathComponent();
             TreeItemData oldUserObject = (TreeItemData) oldNode.getUserObject();
 
-            String html = editor.getHtml();
-            fileSystemManager.saveTreeItem(oldUserObject.getFileName(), html);
+            //String html = editor.getHtml();
+            fileSystemManager.saveTreeItem(oldUserObject.getFileName(), /*html*/ "");
         }
 
         if (newPath != null) {
@@ -227,11 +254,11 @@ public class TreeNotesApp extends JFrame {
 
             statusBar.setText(" Selected: %s   >>   FileName: %s".formatted(newUserObject.getNodeName(), newUserObject.getFileName()));
             String htmlToSet = fileSystemManager.loadData(newUserObject.getFileName());
-            editor.setHtml(htmlToSet);
+            //editor.setHtml(htmlToSet);
         }
 
         boolean hasSelection = tree.getSelectionPath() != null;
-        editor.setEditorActive(hasSelection);
+        //editor.setEditorActive(hasSelection);
     }
 
     public static TreeModel buildTreeModel(TreeHierarchyData rootPageNode) {
