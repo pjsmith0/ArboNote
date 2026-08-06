@@ -1,58 +1,134 @@
 package com.pjs.ui;
 
-import ca.weblite.webview.swing.WebViewComponent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pjs.Config;
 import com.pjs.model.TreeHierarchyData;
 import com.pjs.model.TreeItemData;
 import com.pjs.util.FileSystemManager;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
+import javafx.scene.Scene;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.SelectionMode;
+import javafx.scene.control.SplitPane;
+import javafx.scene.control.TreeCell;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
+import javafx.scene.image.Image;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.text.Font;
+import javafx.stage.Stage;
 import lombok.SneakyThrows;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.event.TreeSelectionEvent;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeCellRenderer;
-import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.TreeCellRenderer;
-import javax.swing.tree.TreeModel;
-import javax.swing.tree.TreePath;
-import javax.swing.tree.TreeSelectionModel;
-import java.awt.*;
-import java.awt.event.ComponentListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.io.File;
 import java.nio.file.Path;
 import java.util.Optional;
 
-public class TreeNotesApp extends JFrame {
+public class TreeNotesApp extends Application  {
 
-    private static final String ROOT_IMAGE = "/icons/home_16dp.png";
-    private static final String ARTICLE_IMAGE = "/icons/sticky_note_16dp.png";
-
-    private final JTree tree;
-    //private final BasicTextEditor editor;
-    private final WebViewComponent webViewComponent = WebViewComponent.create();
-    private final JLabel statusBar;
     private Config config = new Config();
+    private TreeView<TreeItemData> fileTree;
+    private Label statusLabel;
+    private WebRichTextEditor editor;
     private final FileSystemManager fileSystemManager;
 
-    @SneakyThrows
     public TreeNotesApp() {
-        super("ArboNote");
+        this.fileSystemManager = new FileSystemManager(config);
+    }
 
-        setIconImage(new ImageIcon(getClass().getResource("/icons/arbonote.png")).getImage());
+    @Override
+    public void start(Stage primaryStage) {
+        BorderPane root = new BorderPane();
+        root.setTop(buildToolbar(primaryStage));
+        root.setCenter(buildSplitPane(primaryStage));
+        root.setBottom(buildStatusBar());
 
-        fileSystemManager = new FileSystemManager(config);
+        Scene scene = new Scene(root, 1200, 800);
+        String css = getClass().getResource("/com/fileeditor/app/pjs/styles.css") == null
+                ? null
+                : getClass().getResource("/com/fileeditor/app/pjs/styles.css").toExternalForm();
+        if (css != null) {
+            scene.getStylesheets().add(css);
+        }
 
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1024, 768);
-        setLocationRelativeTo(null);
-        setLayout(new BorderLayout());
+        primaryStage.setTitle("File Tree Rich Text Editor");
+        primaryStage.setScene(scene);
+        try {
+            primaryStage.getIcons().add(new Image(
+                    getClass().getResourceAsStream("/com/fileeditor/app/icon.png")));
+        } catch (Exception ignored) {
+            // Icon is optional; ignore if not present.
+        }
+        primaryStage.show();
+    }
 
-        setJMenuBar(createMenuBar());
+    private MenuBar buildToolbar(Stage stage) {
+        MenuBar menuBar = new MenuBar();
+        menuBar.setMinWidth(100);
+
+        MenuItem exitMenuItem = new MenuItem("Exit");
+        exitMenuItem.setOnAction(event -> {
+            System.exit(0);
+        });
+        Menu fileMenu = new Menu("File");
+        fileMenu.getItems().add(exitMenuItem);
+
+        MenuItem aboutMenuItem = new MenuItem("About");
+//        aboutMenuItem.addActionListener(e -> {
+//            showAboutDialog(TreeNotesApp.this);
+//        });
+        Menu helpMenu = new Menu("Help");
+        helpMenu.getItems().add(aboutMenuItem);
+
+        menuBar.getMenus().add(fileMenu);
+        menuBar.getMenus().add(helpMenu);
+
+        return menuBar;
+    }
+
+    @SneakyThrows
+    private SplitPane buildSplitPane(Stage stage) {
+        fileTree = new TreeView<>();
+        fileTree.setShowRoot(true);
+        fileTree.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
+        // TODO: do drag & drop handlers
+
+        fileTree.setCellFactory(tv -> {
+            TreeCell<TreeItemData> cell = new TreeCell<>() {
+                @Override
+                protected void updateItem(TreeItemData item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                        setGraphic(null);
+                    } else {
+                        setText(item.getNodeName());
+                    }
+                }
+            };
+
+            // Create the ContextMenu
+            TreeContextMenu contextMenu = new TreeContextMenu(fileSystemManager, cell);
+
+            // Bind context menu to cell, but only display it if the cell is not empty
+            cell.emptyProperty().addListener((obs, wasEmpty, isNowEmpty) -> {
+                if (isNowEmpty) {
+                    cell.setContextMenu(null);
+                } else {
+                    cell.setContextMenu(contextMenu);
+                }
+            });
+
+            return cell;
+        });
 
         ObjectMapper mapper = new ObjectMapper();
         TreeHierarchyData rootPageNode = mapper.readValue(
@@ -60,317 +136,75 @@ public class TreeNotesApp extends JFrame {
                 TreeHierarchyData.class
         );
 
-        TreeModel treeModel = buildTreeModel(rootPageNode);
+        TreeItem<TreeItemData> rootItem = toTreeItem(rootPageNode);
+        rootItem.setExpanded(true);
+        fileTree.setRoot(rootItem);
 
-        tree = new JTree(treeModel);
-        tree.setRootVisible(true);
-        tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
-        tree.addTreeSelectionListener(this::onTreeSelection);
-        tree.addMouseListener(buildMouseAdaptor());
-        tree.setCellRenderer(getCellRenderer());
-        tree.setDragEnabled(true);
-        tree.setDropMode(DropMode.ON_OR_INSERT);
-        tree.setTransferHandler(new TreeTransferHandler(fileSystemManager));
+        fileTree.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
 
-        JScrollPane treeScrollPane = new JScrollPane(tree);
-        treeScrollPane.setBorder(BorderFactory.createTitledBorder("Notes Tree"));
+            TreeItemData prevSelectedData = Optional.ofNullable(oldV).map(TreeItem::getValue).orElseGet(() -> null);
+            TreeItemData newSelectedData = Optional.ofNullable(newV).map(TreeItem::getValue).orElseGet(() -> null);
 
-        //editor = new BasicTextEditor();
-        final String html =
-                "<!doctype html><html><head><meta charset='utf-8'>"
-                        + "<title>evalAsync demo</title>"
-                        + "<style>"
-                        + "  body{font:14px/1.4 system-ui,sans-serif;padding:1em;"
-                        + "    max-width:48em;margin:0 auto;}"
-                        + "  h1{font-size:1.2em;margin:0 0 .4em 0;}"
-                        + "  #target{padding:.3em .5em;background:#eef;"
-                        + "    border:1px solid #99c;border-radius:.3em;display:inline-block;}"
-                        + "  #spacer{height:1500px;background:linear-gradient("
-                        + "    #fff,#dde);margin-top:1em;border-top:1px dashed #999;}"
-                        + "</style></head><body>"
-                        + "<h1>WebViewAsyncEvalDemo</h1>"
-                        + "<p>Select some text in this paragraph, scroll around, and try"
-                        + " the buttons in the bottom panel.  Each click runs an"
-                        + " <code>evalAsync</code> against the loaded page and prints"
-                        + " the future's resolution in the text area below.</p>"
-                        + "<p id='target' data-line='42'>This paragraph carries"
-                        + " <code>data-line=\"42\"</code> &mdash; the &lsquo;query"
-                        + " data-attribute&rsquo; button reads it.</p>"
-                        + "<div id='spacer'>Scroll me &mdash; the &lsquo;scroll"
-                        + " position&rsquo; button reads window.scrollX/Y.</div>"
-                        + "</body></html>";
+            if (prevSelectedData != null) {
+                String html = editor.getHtmlText();
+                fileSystemManager.saveTreeItem(prevSelectedData.getFileName(), html);
+            }
 
-        webViewComponent.setUrl("data:text/html;charset=utf-8," + html);
+            if (newSelectedData != null) {
+                statusLabel.setText(" Selected: %s   >>   FileName: %s".formatted(
+                        newSelectedData.getNodeName(),
+                        newSelectedData.getFileName()));
 
-        JPanel editorContainer = new JPanel(new BorderLayout());
-        editorContainer.setBorder(BorderFactory.createTitledBorder("Editor"));
-        editorContainer.add(webViewComponent, BorderLayout.CENTER);
+                String htmlToSet = fileSystemManager.loadData(newSelectedData.getFileName());
+                editor.setHtmlText(htmlToSet);
+            }
 
-        JSplitPane splitPane = new JSplitPane(
-                JSplitPane.HORIZONTAL_SPLIT,
-                treeScrollPane,
-                editorContainer
-        );
-        splitPane.setDividerLocation(200);
-        splitPane.setOneTouchExpandable(true);
-        splitPane.setContinuousLayout(true);
+        });
 
-        add(splitPane, BorderLayout.CENTER);
-
-        statusBar = new JLabel(" Ready");
-        statusBar.setBorder(BorderFactory.createEtchedBorder());
-        add(statusBar, BorderLayout.SOUTH);
-
-        addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                TreePath path = tree.getSelectionPath();
-                Optional.ofNullable(path)
-                        .map(TreePath::getLastPathComponent)
-                        .ifPresent(o -> {
-                            DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) o;
-                            TreeItemData userObject = (TreeItemData) selectedNode.getUserObject();
-                            //fileSystemManager.saveTreeItem(userObject.getFileName(), editor.getHtml());
-                        });
+        fileTree.setOnMouseClicked(evt -> {
+            if (evt.getClickCount() == 2) {
+                TreeItem<TreeItemData> item = fileTree.getSelectionModel().getSelectedItem();
+                if (item != null && item.getValue() != null) {
+                    String html = fileSystemManager.loadData(item.getValue().getFileName());
+                    editor.setHtmlText(html);
+                }
             }
         });
+
+        editor = new WebRichTextEditor();
+        editor.setPrefWidth(760);
+
+        SplitPane split = new SplitPane();
+        split.setOrientation(Orientation.HORIZONTAL);
+        split.getItems().addAll(fileTree, editor);
+        split.setDividerPositions(0.28);
+        SplitPane.setResizableWithParent(fileTree, Boolean.TRUE);
+        return split;
     }
 
-    private TreeCellRenderer getCellRenderer() {
-        return new DefaultTreeCellRenderer() {
-            @Override
-            public Component getTreeCellRendererComponent(
-                    JTree tree,
-                    Object value,
-                    boolean selected,
-                    boolean expanded,
-                    boolean leaf,
-                    int row,
-                    boolean hasFocus) {
-
-                super.getTreeCellRendererComponent(
-                        tree, value, selected, expanded, leaf, row, hasFocus
-                );
-
-                DefaultMutableTreeNode node = (DefaultMutableTreeNode) value;
-                Object userObject = node.getUserObject();
-
-                if (userObject instanceof TreeItemData treeItemData) {
-                    setText(treeItemData.getNodeName());
-
-                    if (node.getParent() == null) {
-                        Optional.ofNullable(getClass().getResource(ROOT_IMAGE))
-                                .ifPresent(url -> setIcon(new ImageIcon(url)));
-                    } else {
-                        Optional.ofNullable(getClass().getResource(ARTICLE_IMAGE))
-                                .ifPresent(url -> setIcon(new ImageIcon(url)));
-                    }
-                }
-
-                return this;
-            }
-        };
-    }
-
-    private MouseAdapter buildMouseAdaptor() {
-        return new MouseAdapter() {
-            private void myPopupEvent(MouseEvent e) {
-                int x = e.getX();
-                int y = e.getY();
-
-                JTree tree = (JTree) e.getSource();
-                TreePath path = tree.getPathForLocation(x, y);
-                if (path == null) {
-                    return;
-                }
-
-                tree.setSelectionPath(path);
-
-                DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) path.getLastPathComponent();
-
-                TreeContextMenu treeContextMenu = new TreeContextMenu(
-                        fileSystemManager,
-                        TreeNotesApp.this,
-                        tree,
-                        null/*editor*/,
-                        selectedNode
-                );
-                treeContextMenu.show(tree, e.getX(), e.getY());
-            }
-
-            @Override
-            public void mousePressed(MouseEvent e) {
-                if (e.isPopupTrigger()) {
-                    myPopupEvent(e);
-                }
-            }
-
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                if (e.isPopupTrigger()) {
-                    myPopupEvent(e);
-                }
-            }
-        };
-    }
-
-    private JMenuBar createMenuBar() {
-        JMenuBar menuBar = new JMenuBar();
-
-        JMenuItem exitMenuItem = new JMenuItem("Exit");
-        exitMenuItem.addActionListener(e -> System.exit(0));
-        JMenu fileMenu = new JMenu("File");
-        fileMenu.add(exitMenuItem);
-
-        JMenuItem aboutMenuItem = new JMenuItem("About");
-        aboutMenuItem.addActionListener(e -> {
-            showAboutDialog(TreeNotesApp.this);
-        });
-        JMenu helpMenu = new JMenu("Help");
-        helpMenu.add(aboutMenuItem);
-
-        menuBar.add(fileMenu);
-        menuBar.add(helpMenu);
-
-        return menuBar;
-    }
-
-    private void onTreeSelection(TreeSelectionEvent event) {
-        TreePath oldPath = event.getOldLeadSelectionPath();
-        TreePath newPath = event.getNewLeadSelectionPath();
-
-        if (oldPath != null) {
-            DefaultMutableTreeNode oldNode =
-                    (DefaultMutableTreeNode) oldPath.getLastPathComponent();
-            TreeItemData oldUserObject = (TreeItemData) oldNode.getUserObject();
-
-            //String html = editor.getHtml();
-            fileSystemManager.saveTreeItem(oldUserObject.getFileName(), /*html*/ "");
-        }
-
-        if (newPath != null) {
-            DefaultMutableTreeNode newNode = (DefaultMutableTreeNode) newPath.getLastPathComponent();
-            TreeItemData newUserObject = (TreeItemData) newNode.getUserObject();
-
-            statusBar.setText(" Selected: %s   >>   FileName: %s".formatted(newUserObject.getNodeName(), newUserObject.getFileName()));
-            String htmlToSet = fileSystemManager.loadData(newUserObject.getFileName());
-            //editor.setHtml(htmlToSet);
-        }
-
-        boolean hasSelection = tree.getSelectionPath() != null;
-        //editor.setEditorActive(hasSelection);
-    }
-
-    public static TreeModel buildTreeModel(TreeHierarchyData rootPageNode) {
-        DefaultMutableTreeNode swingRoot = buildSwingNode(rootPageNode);
-        return new DefaultTreeModel(swingRoot);
-    }
-
-    private static DefaultMutableTreeNode buildSwingNode(TreeHierarchyData pageNode) {
-        TreeItemData treeItemData = TreeItemData.builder()
-                .nodeName(pageNode.getNodeName())
-                .fileName(pageNode.getFileName())
-                .build();
-
-        DefaultMutableTreeNode treeNode = new DefaultMutableTreeNode(treeItemData);
-
-        if (pageNode.getChildren() != null) {
-            for (TreeHierarchyData child : pageNode.getChildren()) {
-                treeNode.add(buildSwingNode(child));
-            }
-        }
-
-        return treeNode;
-    }
-
-    @SneakyThrows
-    public static void showAboutDialog(JFrame parent) {
-        JDialog dialog = new JDialog(parent, "About", true);
-        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-
-        JPanel content = new JPanel(new BorderLayout(16, 16));
-        content.setBorder(new EmptyBorder(20, 20, 20, 20));
-        content.setBackground(Color.WHITE);
-
-        JPanel iconPanel = new JPanel(new BorderLayout());
-        iconPanel.setPreferredSize(new Dimension(100, 100));
-        iconPanel.setOpaque(false);
-
-        JLabel picLabel;
-        java.net.URL imageUrl = TreeNotesApp.class.getResource("/icons/arbonote.png");
-
-        if (imageUrl != null) {
-            ImageIcon originalIcon = new ImageIcon(imageUrl);
-            Image scaled = originalIcon.getImage().getScaledInstance(72, 72, Image.SCALE_SMOOTH);
-            picLabel = new JLabel(new ImageIcon(scaled));
-        } else {
-            picLabel = new JLabel("No Image");
-            picLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        }
-
-        picLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        picLabel.setVerticalAlignment(SwingConstants.CENTER);
-        iconPanel.add(picLabel, BorderLayout.CENTER);
-
-        JPanel textPanel = new JPanel();
-        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
-        textPanel.setOpaque(false);
-
-        JLabel title = new JLabel("ArboNote");
-        title.setFont(new Font("SansSerif", Font.BOLD, 22));
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JLabel version = new JLabel("Version 1.0.0");
-        version.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        version.setForeground(new Color(90, 90, 90));
-        version.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JTextArea description = new JTextArea(
-                "A clean and modern Swing application.\n\n" +
-                        "Built with Java Swing for desktop use.\n" +
-                        "© 2026"
+    private TreeItem<TreeItemData> toTreeItem(TreeHierarchyData node) {
+        TreeItem<TreeItemData> item = new TreeItem<>(
+                TreeItemData.builder()
+                        .nodeName(node.getNodeName())
+                        .fileName(node.getFileName())
+                        .build()
         );
-        description.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        description.setEditable(false);
-        description.setFocusable(false);
-        description.setOpaque(false);
-        description.setLineWrap(true);
-        description.setWrapStyleWord(true);
-        description.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        textPanel.add(title);
-        textPanel.add(Box.createVerticalStrut(6));
-        textPanel.add(version);
-        textPanel.add(Box.createVerticalStrut(14));
-        textPanel.add(description);
-
-        JPanel centerPanel = new JPanel(new BorderLayout(16, 0));
-        centerPanel.setOpaque(false);
-        centerPanel.add(iconPanel, BorderLayout.WEST);
-        centerPanel.add(textPanel, BorderLayout.CENTER);
-
-        JButton closeButton = new JButton("Close");
-        closeButton.addActionListener(e -> dialog.dispose());
-
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        buttonPanel.setOpaque(false);
-        buttonPanel.add(closeButton);
-
-        content.add(centerPanel, BorderLayout.CENTER);
-        content.add(buttonPanel, BorderLayout.SOUTH);
-
-        dialog.setContentPane(content);
-        dialog.pack();
-        dialog.setSize(420, 240);
-        dialog.setResizable(false);
-        dialog.setLocationRelativeTo(parent);
-        dialog.setVisible(true);
+        node.getChildren().forEach(child -> item.getChildren().add(toTreeItem(child)));
+        return item;
     }
 
-//    @Override
-//    public synchronized void addComponentListener(ComponentListener l) {
-//        super.addComponentListener(l);
-//        DefaultMutableTreeNode firstLeaf = ((DefaultMutableTreeNode) tree.getModel().getRoot()).getFirstLeaf();
-//        tree.setSelectionPath(new TreePath(firstLeaf.getPath()));
-//    }
+    private HBox buildStatusBar() {
+        statusLabel = new Label("No file open");
+        statusLabel.setFont(Font.font(11));
+        HBox box = new HBox(statusLabel);
+        box.setPadding(new Insets(4, 8, 4, 8));
+        HBox.setHgrow(statusLabel, Priority.ALWAYS);
+        return box;
+    }
+
+    @Override
+    public void stop() {
+        Platform.exit();
+    }
+
 }

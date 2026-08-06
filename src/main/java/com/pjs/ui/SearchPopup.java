@@ -3,116 +3,93 @@ package com.pjs.ui;
 import com.pjs.model.SearchItemData;
 import com.pjs.model.TreeItemData;
 import com.pjs.util.FileSystemManager;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.Window;
 
-import javax.swing.*;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.TreePath;
-import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.List;
 
 public class SearchPopup {
 
     private final FileSystemManager fileSystemManager;
-    private final JTree pagesTree;
-    private final DefaultMutableTreeNode selectedItem;
-    private final JDialog popupDialog;
-    private final JTextField searchField;
-    private final JList<SearchItemData> resultsList;
-    private final DefaultListModel<SearchItemData> resultsListModel;
-    private final JButton searchButton;
+    private final TreeView<TreeItemData> pagesTree;
+    private final TreeItem<TreeItemData> selectedItem;
+    private final Stage popupStage;
+    private final javafx.scene.control.TextField searchField;
+    private final ListView<SearchItemData> resultsList;
+    private final Button searchButton;
 
     public SearchPopup(FileSystemManager fileSystemManager,
-                       JTree pagesTree,
-                       DefaultMutableTreeNode selectedItem,
-                       Frame parentFrame) {
+                       TreeView<TreeItemData> pagesTree,
+                       TreeItem<TreeItemData> selectedItem,
+                       Window owner) {
         this.fileSystemManager = fileSystemManager;
         this.pagesTree = pagesTree;
         this.selectedItem = selectedItem;
 
-        popupDialog = new JDialog(parentFrame, "Search Files", true);
-        popupDialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        popupStage = new Stage();
+        popupStage.initModality(Modality.APPLICATION_MODAL);
+        popupStage.initOwner(owner);
+        popupStage.setTitle("Search Files");
 
-        searchField = new JTextField();
-        searchButton = new JButton("Search");
-        searchButton.setPreferredSize(new Dimension(80, searchButton.getPreferredSize().height));
+        searchField = new javafx.scene.control.TextField();
+        searchField.setPrefColumnCount(20);
+        searchButton = new Button("Search");
+        HBox searchBox = new HBox(10, searchField, searchButton);
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(searchField, Priority.ALWAYS);
 
-        JPanel searchBox = new JPanel(new BorderLayout(10, 0));
-        searchBox.add(searchField, BorderLayout.CENTER);
-        searchBox.add(searchButton, BorderLayout.EAST);
+        resultsList = new ListView<>();
+        resultsList.getSelectionModel().selectFirst();
+        resultsList.setPrefSize(350, 200);
 
-        resultsListModel = new DefaultListModel<>();
-        resultsList = new JList<>(resultsListModel);
-        resultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-
-        resultsList.setCellRenderer(new DefaultListCellRenderer() {
+        resultsList.setCellFactory(list -> new ListCell<>() {
             @Override
-            public Component getListCellRendererComponent(JList<?> list,
-                                                          Object value,
-                                                          int index,
-                                                          boolean isSelected,
-                                                          boolean cellHasFocus) {
-                Component component = super.getListCellRendererComponent(
-                        list, value, index, isSelected, cellHasFocus
-                );
-
-                if (value instanceof SearchItemData item) {
-                    setText(item.getNodeName());
-                } else {
-                    setText("");
-                }
-
-                return component;
+            protected void updateItem(SearchItemData item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? "" : item.getNodeName());
             }
         });
 
-        resultsList.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
-                    SearchItemData clickedItem = resultsList.getSelectedValue();
-                    if (clickedItem != null && clickedItem.getTreeItem() instanceof DefaultMutableTreeNode treeNode) {
-                        TreePath path = new TreePath(treeNode.getPath());
-                        pagesTree.setSelectionPath(path);
-                        pagesTree.scrollPathToVisible(path);
-                        popupDialog.dispose();
-                    }
+        resultsList.setOnMouseClicked(evt -> {
+            if (evt.getClickCount() == 2) {
+                SearchItemData clickedItem = resultsList.getSelectionModel().getSelectedItem();
+                if (clickedItem != null && clickedItem.getTreeItem() instanceof TreeItem<?> treeNode) {
+                    TreeItem<TreeItemData> target = (TreeItem<TreeItemData>) treeNode;
+                    pagesTree.getSelectionModel().select(target);
+                    pagesTree.scrollTo(pagesTree.getRow(target));
+                    popupStage.close();
                 }
             }
         });
 
-        JScrollPane resultsScrollPane = new JScrollPane(resultsList);
-        resultsScrollPane.setPreferredSize(new Dimension(350, 200));
+        Label searchLabel = new Label("Search for text in files:");
+        Label resultsLabel = new Label("Files containing search text:");
 
-        JPanel layout = new JPanel();
-        layout.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-        layout.setLayout(new BoxLayout(layout, BoxLayout.Y_AXIS));
+        VBox layout = new VBox(10,
+                searchLabel,
+                searchBox,
+                resultsLabel,
+                resultsList);
+        layout.setPadding(new Insets(15));
 
-        JLabel searchLabel = new JLabel("Search for text in files:");
-        JLabel resultsLabel = new JLabel("Files containing search text:");
+        searchButton.setOnAction(e -> performSearch());
+        searchField.setOnAction(e -> performSearch());
 
-        searchLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        searchBox.setAlignmentX(Component.LEFT_ALIGNMENT);
-        resultsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        resultsScrollPane.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        layout.add(searchLabel);
-        layout.add(Box.createVerticalStrut(10));
-        layout.add(searchBox);
-        layout.add(Box.createVerticalStrut(10));
-        layout.add(resultsLabel);
-        layout.add(Box.createVerticalStrut(10));
-        layout.add(resultsScrollPane);
-
-        searchButton.addActionListener(e -> performSearch());
-        searchField.addActionListener(e -> performSearch());
-
-        popupDialog.setContentPane(layout);
-        popupDialog.setSize(400, 350);
-        popupDialog.setLocationRelativeTo(parentFrame);
+        popupStage.setScene(new Scene(layout, 400, 350));
     }
 
     private void performSearch() {
@@ -121,7 +98,7 @@ public class SearchPopup {
             return;
         }
 
-        resultsListModel.clear();
+        resultsList.getItems().clear();
 
         List<SearchItemData> locationsToSearch = new ArrayList<>();
         gatherFileNames(locationsToSearch, selectedItem);
@@ -129,48 +106,42 @@ public class SearchPopup {
         List<SearchItemData> foundItems =
                 fileSystemManager.searchForTextInsideList(locationsToSearch, searchText);
 
-        for (SearchItemData item : foundItems) {
-            resultsListModel.addElement(item);
-        }
+        resultsList.getItems().addAll(foundItems);
     }
 
-    private void gatherFileNames(List<SearchItemData> locationsToSearch, DefaultMutableTreeNode selectedItem) {
-        Object userObject = selectedItem.getUserObject();
-        if (!(userObject instanceof TreeItemData data)) {
+    private void gatherFileNames(List<SearchItemData> locationsToSearch, TreeItem<TreeItemData> treeItem) {
+        TreeItemData data = treeItem.getValue();
+        if (data == null) {
             return;
         }
 
         locationsToSearch.add(SearchItemData.builder()
                 .fileName(data.getFileName())
                 .nodeName(data.getNodeName())
-                .treeItem(selectedItem)
+                .treeItem(treeItem)
                 .build());
 
-        Enumeration<?> children = selectedItem.children();
-        while (children.hasMoreElements()) {
-            Object childObj = children.nextElement();
-            if (childObj instanceof DefaultMutableTreeNode childNode) {
-                Object childUserObject = childNode.getUserObject();
-                if (childUserObject instanceof TreeItemData childData) {
-                    locationsToSearch.add(SearchItemData.builder()
-                            .fileName(childData.getFileName())
-                            .nodeName(childData.getNodeName())
-                            .treeItem(childNode)
-                            .build());
-                }
+        for (TreeItem<TreeItemData> child : treeItem.getChildren()) {
+            TreeItemData childData = child.getValue();
+            if (childData != null) {
+                locationsToSearch.add(SearchItemData.builder()
+                        .fileName(childData.getFileName())
+                        .nodeName(childData.getNodeName())
+                        .treeItem(child)
+                        .build());
+            }
 
-                if (!childNode.isLeaf()) {
-                    gatherFileNames(locationsToSearch, childNode);
-                }
+            if (!child.getChildren().isEmpty()) {
+                gatherFileNames(locationsToSearch, child);
             }
         }
     }
 
     public void show() {
-        popupDialog.setVisible(true);
+        popupStage.showAndWait();
     }
 
     public SearchItemData getSelectedFile() {
-        return resultsList.getSelectedValue();
+        return resultsList.getSelectionModel().getSelectedItem();
     }
 }

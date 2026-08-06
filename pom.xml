@@ -19,6 +19,12 @@
     <commons-codec.version>1.13</commons-codec.version>
     <jcefmaven.version>143.0.14</jcefmaven.version>
     <lombok.version>1.18.42</lombok.version>
+
+    <javafx.version>23.0.1</javafx.version>
+    <javafx.plugin.version>0.0.8</javafx.plugin.version>
+    <main.class>com.pjs.App</main.class>
+    <jpro.version>2022.1.0</jpro.version>
+    <rta.version>1.2.6</rta.version>
   </properties>
 
   <dependencyManagement>
@@ -39,7 +45,15 @@
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <version>${lombok.version}</version>
-      <scope>provided</scope>
+<!--      <scope>provided</scope>-->
+    </dependency>
+
+    <!-- Source: https://mvnrepository.com/artifact/org.projectlombok/lombok -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>${lombok.version}</version>
+      <scope>compile</scope>
     </dependency>
 
     <dependency>
@@ -48,24 +62,14 @@
       <version>2.15.2</version>
     </dependency>
 
+    <!-- Source: https://mvnrepository.com/artifact/commons-io/commons-io -->
     <dependency>
-      <groupId>me.friwi</groupId>
-      <artifactId>jcefmaven</artifactId>
-      <version>${jcefmaven.version}</version>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <version>2.22.0</version>
+      <scope>compile</scope>
     </dependency>
 
-    <!-- Sanitize HTML -->
-    <dependency>
-      <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
-      <artifactId>owasp-java-html-sanitizer</artifactId>
-      <version>20211018.2</version>
-    </dependency>
-    <!-- CSSBox DataURLHandler -->
-    <dependency>
-      <groupId>net.sf.cssbox</groupId>
-      <artifactId>jstyleparser</artifactId>
-      <version>4.0.0</version>
-    </dependency>
     <!-- Logging -->
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -92,47 +96,51 @@
       <artifactId>slf4j-simple</artifactId>
       <version>${slf4j.version}</version>
     </dependency>
+
     <!-- Apache Commons -->
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
       <version>${commons-codec.version}</version>
     </dependency>
-    <!-- Swing UI -->
     <dependency>
-      <groupId>com.formdev</groupId>
-      <artifactId>flatlaf</artifactId>
-      <version>${flatlaf.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.formdev</groupId>
-      <artifactId>flatlaf-intellij-themes</artifactId>
-      <version>${flatlaf.version}</version>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.20.0</version>
+      <scope>compile</scope>
     </dependency>
 
     <dependency>
-      <groupId>com.formdev</groupId>
-      <artifactId>flatlaf-extras</artifactId>
-      <version>${flatlaf.version}</version>
+      <groupId>com.gluonhq</groupId>
+      <artifactId>rich-text-area</artifactId>
+      <version>${rta.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-controls</artifactId>
+      <version>${javafx.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-fxml</artifactId>
+      <version>${javafx.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-web</artifactId>
+      <version>${javafx.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.kordamp.ikonli</groupId>
+      <artifactId>ikonli-lineawesome-pack</artifactId>
+      <version>12.3.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.kordamp.ikonli</groupId>
+      <artifactId>ikonli-javafx</artifactId>
+      <version>12.3.1</version>
     </dependency>
 
-    <dependency>
-      <groupId>ca.weblite</groupId>
-      <artifactId>webview</artifactId>
-      <version>1.0.10</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-params</artifactId>
-      <scope>test</scope>
-    </dependency>
   </dependencies>
 
   <build>

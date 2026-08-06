@@ -6,6 +6,8 @@ import com.pjs.Config;
 import com.pjs.model.SearchItemData;
 import com.pjs.model.TreeItemData;
 import com.pjs.model.TreeHierarchyData;
+import javafx.collections.ObservableList;
+import javafx.scene.control.TreeItem;
 import lombok.SneakyThrows;
 import org.apache.commons.io.FileUtils;
 
@@ -88,7 +90,7 @@ public class FileSystemManager {
         return Paths.get(config.getRootPath(), fullItemName);
     }
 
-    public void saveTreeToJson(javax.swing.tree.TreeNode root) {
+    public void saveTreeToJson(TreeItem<TreeItemData> root) {
         TreeHierarchyData rootNode = treeItemToNode(root);
         saveTreeFile(rootNode);
     }
@@ -101,22 +103,18 @@ public class FileSystemManager {
         }
     }
 
-    public TreeHierarchyData treeItemToNode(javax.swing.tree.TreeNode treeNode) {
+    public TreeHierarchyData treeItemToNode(TreeItem<TreeItemData> treeNode) {
         if (treeNode == null) return null;
 
-        DefaultMutableTreeNode treeNodeNode = (DefaultMutableTreeNode) treeNode;
-
         TreeHierarchyData node = TreeHierarchyData.builder()
-                .nodeName(((TreeItemData)treeNodeNode.getUserObject()).getNodeName())
-                .fileName(((TreeItemData)treeNodeNode.getUserObject()).getFileName())
+                .nodeName(treeNode.getValue().getNodeName())
+                .fileName(treeNode.getValue().getFileName())
                 .build();
 
-        Enumeration<javax.swing.tree.TreeNode> children = treeNodeNode.children();
-        while (children.hasMoreElements()) {
-            javax.swing.tree.TreeNode childTreeNode = children.nextElement();
-            node.getChildren().add(treeItemToNode(childTreeNode));
+        ObservableList<TreeItem<TreeItemData>> children = treeNode.getChildren();
+        for (TreeItem<TreeItemData> child : children) {
+            node.getChildren().add(treeItemToNode(child));
         }
-
         return node;
     }
 
