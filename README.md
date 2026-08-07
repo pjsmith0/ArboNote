@@ -11,7 +11,7 @@ Notes and their HTML content are stored as plain files on disk under `~/arbonote
 - JDK **17** or newer (JDK 17+ ships `jpackage`, used for native packages)
 - Maven **3.8+**
 - Internet access on first build (Maven downloads JavaFX and plugins)
-- To build the Linux `.deb` locally: `fakeroot` and `dpkg` (`sudo apt-get install fakeroot` on Debian/Ubuntu). If `dpkg-deb` is missing (e.g. Arch), `build-linux.sh` skips the `.deb` automatically — pass `-Dskip.deb=true` to `mvn package -Ppackage-linux` to do the same manually. The `.deb` is always built on the Ubuntu CI runner.
+- To build the Linux `.deb` locally you need Debian/Ubuntu (`fakeroot` + `dpkg`; Arch/other distros can't build it because jpackage validates Debian packages via `dpkg -s`). On non-Debian systems `build-linux.sh` skips the `.deb` automatically — pass `-Dskip.deb=true` to `mvn package -Ppackage-linux` to do the same manually. The `.deb` is always built on the Ubuntu CI runner.
 - To build the Linux portable `.AppImage`: [appimagetool](https://github.com/AppImage/AppImageKit) (see `build-appimage.sh`)
 - The Windows **portable `.exe`** needs Java **25+** installed on the machine that runs it (it embeds the jar but no JRE)
 

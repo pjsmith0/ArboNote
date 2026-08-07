@@ -8,8 +8,11 @@ set -euo pipefail
 
 MVN_ARGS=(-B clean package -Ppackage-linux)
 
-if ! command -v dpkg-deb >/dev/null 2>&1; then
-  echo "== dpkg-deb not found; skipping the .deb installer (portable AppImage still built) =="
+# jpackage can only build a .deb on Debian-based distros (it validates
+# Debian packages via "dpkg -s", which fails on e.g. Arch even with dpkg
+# installed). Skip the .deb elsewhere; it is always built on the Ubuntu CI.
+if [ ! -f /etc/debian_version ]; then
+  echo "== Not a Debian-based distro; skipping the .deb installer (portable AppImage still built) =="
   MVN_ARGS+=(-Dskip.deb=true)
 fi
 
