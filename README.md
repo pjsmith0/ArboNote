@@ -11,8 +11,9 @@ Notes and their HTML content are stored as plain files on disk under `~/arbonote
 - JDK **17** or newer (JDK 17+ ships `jpackage`, used for native packages)
 - Maven **3.8+**
 - Internet access on first build (Maven downloads JavaFX and plugins)
-- To build the Linux `.deb` locally: `fakeroot` and `dpkg` (`sudo apt-get install fakeroot` on Debian/Ubuntu)
-- To build the Windows `.exe`: no extra tools (the `.msi` would need WiX; this project produces `.exe` instead)
+- To build the Linux `.deb` locally: `fakeroot` and `dpkg` (`sudo apt-get install fakeroot` on Debian/Ubuntu). If `dpkg-deb` is missing (e.g. Arch), `build-linux.sh` skips the `.deb` automatically — pass `-Dskip.deb=true` to `mvn package -Ppackage-linux` to do the same manually. The `.deb` is always built on the Ubuntu CI runner.
+- To build the Linux portable `.AppImage`: [appimagetool](https://github.com/AppImage/AppImageKit) (see `build-appimage.sh`)
+- The Windows **portable `.exe`** needs Java **25+** installed on the machine that runs it (it embeds the jar but no JRE)
 
 ## Run during development
 
@@ -29,10 +30,7 @@ java -jar target/ArboNote-1.0-SNAPSHOT-all.jar
 
 ## Build a native executable
 
-`jpackage` always builds for the OS it's running on — there is no cross-compiling a Windows `.exe` from Linux or vice versa. Two Maven profiles and two convenience scripts are provided, one per platform. Each produces:
-
-- an **app image** (a portable folder with a native launcher you can run directly), and
-- an **installer** (`.deb` on Linux, `.exe` on Windows).
+`jpackage` always builds for the OS it's running on — there is no cross-compiling a Windows `.exe` from Linux or vice versa. Two Maven profiles and two convenience scripts are provided, one per platform.
 
 **Linux** (outputs under `target/installer/`):
 ```bash
@@ -40,19 +38,30 @@ java -jar target/ArboNote-1.0-SNAPSHOT-all.jar
 # or directly:
 mvn clean package -Ppackage-linux
 ```
+Produces:
+- `ArboNote-*.AppImage` — a **single-file portable executable** (bundled JRE, no Java or install needed; `chmod +x` and run)
+- `ArboNote-*.deb` — an installer for Debian/Ubuntu
+- `target/installer/ArboNote/` — the self-contained app image folder
 
-**Windows** (outputs under `target\installer\`):
+To build just the AppImage from an existing app image: `APPIMAGE=/path/to/appimagetool ./build-appimage.sh`.
+
+**Windows** (outputs under `target\` and `target\installer\`):
 ```bat
 build-windows.bat
 :: or directly:
 mvn clean package -Ppackage-windows
 ```
+Produces:
+- `target\ArboNote-portable.exe` — a **single-file portable exe** (embeds the jar; no install, but the target machine needs Java **25+**)
+- `target\installer\ArboNote\` — a **self-contained portable app** (bundled JRE, no Java needed; run `ArboNote.exe`)
 
 ## Building both automatically (CI)
 
-`.github/workflows/build.yml` runs on GitHub Actions with a matrix of `ubuntu-latest` and `windows-latest`, building the `.deb` and `.exe` (plus portable app images) on every push to `main` and uploading them as workflow artifacts.
+`.github/workflows/build.yml` runs on GitHub Actions with a matrix of `ubuntu-latest` and `windows-latest`, building on every push to `main`:
+- **Linux**: `.deb` installer + single-file portable `.AppImage`
+- **Windows**: single-file portable `.exe` (Launch4j) + self-contained app image zip
 
-Pushing a version tag (e.g. `git tag v1.0.0 && git push origin v1.0.0`) also creates a **GitHub Release** with all four artifacts attached automatically.
+All artifacts are uploaded as workflow artifacts. Pushing a version tag (e.g. `git tag v1.0.0 && git push origin v1.0.0`) also creates a **GitHub Release** with them attached automatically.
 
 ## Project layout
 
@@ -62,7 +71,8 @@ src/main/java/module-info.java   JavaFX module descriptor
 src/main/java/com/pjs/App.java   Entry point
 src/main/java/com/pjs/ui/…       Tree UI, web editor, dialogs, context menu
 src/main/resources/com/pjs/…     Quill.js editor assets, styles
-src/main/resources/icons/…       Application icons (arbonote.png)
+src/main/resources/icons/…     Application icons (arbonote.png)
 build-linux.sh / build-windows.bat               One-shot native build scripts
+build-appimage.sh               Wraps the app image into a portable AppImage
 .github/workflows/build.yml      CI matrix build for both OSes + auto-release
 ```

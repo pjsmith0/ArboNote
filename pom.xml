@@ -20,7 +20,7 @@
     <jcefmaven.version>143.0.14</jcefmaven.version>
     <lombok.version>1.18.42</lombok.version>
 
-    <javafx.version>23.0.1</javafx.version>
+    <javafx.version>25.0.4</javafx.version>
     <javafx.plugin.version>0.0.8</javafx.plugin.version>
     <main.class>com.pjs.App</main.class>
     <jpro.version>2022.1.0</jpro.version>
@@ -28,6 +28,7 @@
 
     <package.version>1.0.0</package.version>
     <package.maintainer>pjsmith0 &lt;pjsmith0@users.noreply.github.com&gt;</package.maintainer>
+    <skip.deb>false</skip.deb>
   </properties>
 
   <dependencyManagement>
@@ -186,11 +187,12 @@
 
   <profiles>
     <!--
-      Native packaging via the JDK jpackage tool (included in JDK 17+).
-      jpackage only builds for the OS it runs on, so there is one profile
-      per platform. Both profiles produce:
-        - an app image:  target/installer/<name>/  (portable launcher)
-        - an installer:  target/installer/ArboNote-<version>.(deb|exe)
+      Native packaging. jpackage only builds for the OS it runs on, so there
+      is one profile per platform:
+        - package-linux:   app image (portable launcher) + .deb installer
+        - package-windows: app image (portable launcher) + single-file
+                           portable ArboNote-portable.exe (Launch4j; embeds
+                           the fat jar, requires Java 25+ installed)
       Run with:  mvn clean package -Ppackage-linux   (or -Ppackage-windows)
     -->
     <profile>
@@ -252,6 +254,7 @@
                   <goal>jpackage</goal>
                 </goals>
                 <configuration>
+                  <skip>${skip.deb}</skip>
                   <name>ArboNote</name>
                   <appVersion>${package.version}</appVersion>
                   <vendor>pjs</vendor>
@@ -326,26 +329,31 @@
                   </javaOptions>
                 </configuration>
               </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>com.akathist.maven.plugins.launch4j</groupId>
+            <artifactId>launch4j-maven-plugin</artifactId>
+            <version>2.7.0</version>
+            <executions>
               <execution>
-                <id>exe</id>
+                <id>portable-exe</id>
                 <phase>package</phase>
                 <goals>
-                  <goal>jpackage</goal>
+                  <goal>launch4j</goal>
                 </goals>
                 <configuration>
-                  <name>ArboNote</name>
-                  <appVersion>${package.version}</appVersion>
-                  <vendor>pjs</vendor>
-                  <mainClass>${start-class}</mainClass>
-                  <mainJar>${project.artifactId}-${project.version}-all.jar</mainJar>
-                  <input>${project.build.directory}/jpackage-input</input>
-                  <destination>${project.build.directory}/installer</destination>
-                  <type>EXE</type>
-                  <winMenu>true</winMenu>
-                  <winShortcut>true</winShortcut>
-                  <javaOptions>
-                    <option>--enable-native-access=ALL-UNNAMED</option>
-                  </javaOptions>
+                  <headerType>gui</headerType>
+                  <outfile>${project.build.directory}/ArboNote-portable.exe</outfile>
+                  <jar>${project.build.directory}/${project.artifactId}-${project.version}-all.jar</jar>
+                  <errTitle>ArboNote</errTitle>
+                  <downloadUrl>https://adoptium.net/temurin/releases/?version=25</downloadUrl>
+                  <classPath>
+                    <mainClass>${start-class}</mainClass>
+                  </classPath>
+                  <jre>
+                    <minVersion>25</minVersion>
+                  </jre>
                 </configuration>
               </execution>
             </executions>
