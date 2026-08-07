@@ -25,6 +25,9 @@
     <main.class>com.pjs.App</main.class>
     <jpro.version>2022.1.0</jpro.version>
     <rta.version>1.2.6</rta.version>
+
+    <package.version>1.0.0</package.version>
+    <package.maintainer>pjsmith0 &lt;pjsmith0@users.noreply.github.com&gt;</package.maintainer>
   </properties>
 
   <dependencyManagement>
@@ -180,4 +183,175 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <!--
+      Native packaging via the JDK jpackage tool (included in JDK 17+).
+      jpackage only builds for the OS it runs on, so there is one profile
+      per platform. Both profiles produce:
+        - an app image:  target/installer/<name>/  (portable launcher)
+        - an installer:  target/installer/ArboNote-<version>.(deb|exe)
+      Run with:  mvn clean package -Ppackage-linux   (or -Ppackage-windows)
+    -->
+    <profile>
+      <id>package-linux</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-antrun-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+              <execution>
+                <id>stage-main-jar</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+                <configuration>
+                  <target>
+                    <delete dir="${project.build.directory}/jpackage-input"/>
+                    <mkdir dir="${project.build.directory}/jpackage-input"/>
+                    <copy file="${project.build.directory}/${project.artifactId}-${project.version}-all.jar"
+                          tofile="${project.build.directory}/jpackage-input/${project.artifactId}-${project.version}-all.jar"/>
+                  </target>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.panteleyev</groupId>
+            <artifactId>jpackage-maven-plugin</artifactId>
+            <version>1.8.0</version>
+            <executions>
+              <execution>
+                <id>app-image</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>jpackage</goal>
+                </goals>
+                <configuration>
+                  <name>ArboNote</name>
+                  <appVersion>${package.version}</appVersion>
+                  <vendor>pjs</vendor>
+                  <mainClass>${start-class}</mainClass>
+                  <mainJar>${project.artifactId}-${project.version}-all.jar</mainJar>
+                  <input>${project.build.directory}/jpackage-input</input>
+                  <destination>${project.build.directory}/installer</destination>
+                  <type>APP_IMAGE</type>
+                  <icon>src/main/resources/icons/arbonote.png</icon>
+                  <javaOptions>
+                    <option>--enable-native-access=ALL-UNNAMED</option>
+                  </javaOptions>
+                </configuration>
+              </execution>
+              <execution>
+                <id>deb</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>jpackage</goal>
+                </goals>
+                <configuration>
+                  <name>ArboNote</name>
+                  <appVersion>${package.version}</appVersion>
+                  <vendor>pjs</vendor>
+                  <mainClass>${start-class}</mainClass>
+                  <mainJar>${project.artifactId}-${project.version}-all.jar</mainJar>
+                  <input>${project.build.directory}/jpackage-input</input>
+                  <destination>${project.build.directory}/installer</destination>
+                  <type>DEB</type>
+                  <icon>src/main/resources/icons/arbonote.png</icon>
+                  <linuxShortcut>true</linuxShortcut>
+                  <linuxAppCategory>Utility</linuxAppCategory>
+                  <linuxDebMaintainer>${package.maintainer}</linuxDebMaintainer>
+                  <javaOptions>
+                    <option>--enable-native-access=ALL-UNNAMED</option>
+                  </javaOptions>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <profile>
+      <id>package-windows</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-antrun-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+              <execution>
+                <id>stage-main-jar</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+                <configuration>
+                  <target>
+                    <delete dir="${project.build.directory}/jpackage-input"/>
+                    <mkdir dir="${project.build.directory}/jpackage-input"/>
+                    <copy file="${project.build.directory}/${project.artifactId}-${project.version}-all.jar"
+                          tofile="${project.build.directory}/jpackage-input/${project.artifactId}-${project.version}-all.jar"/>
+                  </target>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.panteleyev</groupId>
+            <artifactId>jpackage-maven-plugin</artifactId>
+            <version>1.8.0</version>
+            <executions>
+              <execution>
+                <id>app-image</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>jpackage</goal>
+                </goals>
+                <configuration>
+                  <name>ArboNote</name>
+                  <appVersion>${package.version}</appVersion>
+                  <vendor>pjs</vendor>
+                  <mainClass>${start-class}</mainClass>
+                  <mainJar>${project.artifactId}-${project.version}-all.jar</mainJar>
+                  <input>${project.build.directory}/jpackage-input</input>
+                  <destination>${project.build.directory}/installer</destination>
+                  <type>APP_IMAGE</type>
+                  <javaOptions>
+                    <option>--enable-native-access=ALL-UNNAMED</option>
+                  </javaOptions>
+                </configuration>
+              </execution>
+              <execution>
+                <id>exe</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>jpackage</goal>
+                </goals>
+                <configuration>
+                  <name>ArboNote</name>
+                  <appVersion>${package.version}</appVersion>
+                  <vendor>pjs</vendor>
+                  <mainClass>${start-class}</mainClass>
+                  <mainJar>${project.artifactId}-${project.version}-all.jar</mainJar>
+                  <input>${project.build.directory}/jpackage-input</input>
+                  <destination>${project.build.directory}/installer</destination>
+                  <type>EXE</type>
+                  <winMenu>true</winMenu>
+                  <winShortcut>true</winShortcut>
+                  <javaOptions>
+                    <option>--enable-native-access=ALL-UNNAMED</option>
+                  </javaOptions>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
